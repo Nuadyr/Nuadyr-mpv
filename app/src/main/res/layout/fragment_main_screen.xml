@@ -4,111 +4,114 @@
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/aengus_paper"
+    android:background="?attr/colorSurface"
     android:clipChildren="false"
     android:clipToPadding="false"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="16dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="16dp">
 
     <ImageView
         android:id="@+id/logo"
         android:layout_width="match_parent"
         android:layout_height="0dp"
-        android:layout_weight="3"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="16dp"
+        android:layout_weight="2"
         android:contentDescription="@string/mpv_activity"
         android:scaleType="fitCenter"
         app:srcCompat="@drawable/mpv_logo" />
 
+    <!-- Top row: the two ways to start something new. Filled = primary. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
-        android:clipChildren="false"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/docBtn"
+            style="@style/Widget.Aengus.Button.Tile.Filled"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_margin="6dp"
             android:layout_weight="1"
-            android:background="@drawable/aengus_button_bg"
-            android:drawableTop="@drawable/ic_file_open_48dp"
-            android:drawablePadding="8dp"
-            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_open_doc_tree"
-            android:textAllCaps="false"
-            android:textColor="@color/aengus_on_action"
-            android:textSize="16sp"
-            app:drawableTint="@color/aengus_on_action" />
+            app:icon="@drawable/ic_file_open_48dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
         <Button
             android:id="@+id/urlBtn"
+            style="@style/Widget.Aengus.Button.Tile.Filled"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_margin="6dp"
             android:layout_weight="1"
-            android:background="@drawable/aengus_button_bg"
-            android:drawableTop="@drawable/ic_link_48dp"
-            android:drawablePadding="8dp"
-            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_open_url"
-            android:textAllCaps="false"
-            android:textColor="@color/aengus_on_action"
-            android:textSize="16sp"
-            app:drawableTint="@color/aengus_on_action" />
+            app:icon="@drawable/ic_link_48dp"
+            app:iconTint="?attr/colorOnPrimary" />
 
     </LinearLayout>
 
+    <!-- Bottom row: secondary. Tonal = quieter. -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
-        android:clipChildren="false"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/filepickerBtn"
+            style="@style/Widget.Aengus.Button.Tile.Tonal"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_margin="6dp"
             android:layout_weight="1"
-            android:background="@drawable/aengus_button_bg"
-            android:drawableTop="@drawable/ic_folder_white_48dp"
-            android:drawablePadding="8dp"
-            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/file_picker_old"
-            android:textAllCaps="false"
-            android:textColor="@color/aengus_on_action"
-            android:textSize="16sp"
-            app:drawableTint="@color/aengus_on_action" />
+            app:icon="@drawable/ic_folder_white_48dp"
+            app:iconTint="?attr/colorOnSecondaryContainer" />
 
         <Button
             android:id="@+id/settingsBtn"
+            style="@style/Widget.Aengus.Button.Tile.Tonal"
             android:layout_width="0dp"
             android:layout_height="match_parent"
+            android:layout_margin="6dp"
             android:layout_weight="1"
-            android:background="@drawable/aengus_button_bg"
-            android:drawableTop="@drawable/ic_settings_black_48dp"
-            android:drawablePadding="8dp"
-            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_settings"
-            android:textAllCaps="false"
-            android:textColor="@color/aengus_on_action"
-            android:textSize="16sp"
-            app:drawableTint="@color/aengus_on_action" />
+            app:icon="@drawable/ic_settings_black_48dp"
+            app:iconTint="?attr/colorOnSecondaryContainer" />
 
     </LinearLayout>
 
-    <androidx.appcompat.widget.SwitchCompat
-        android:id="@+id/switch1"
+    <com.google.android.material.card.MaterialCardView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:background="@drawable/aengus_row_bg"
-        android:minHeight="56dp"
-        android:padding="16dp"
-        android:text="@string/option_remember_choice"
-        android:textColor="@color/aengus_ink"
-        android:textSize="16sp"
-        app:showText="false" />
+        android:layout_marginStart="6dp"
+        android:layout_marginEnd="6dp"
+        android:layout_marginTop="6dp"
+        app:cardBackgroundColor="?attr/colorSurfaceContainerHighest"
+        app:cardCornerRadius="20dp"
+        app:cardElevation="0dp"
+        app:strokeWidth="0dp">
+
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switch1"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:minHeight="60dp"
+            android:paddingStart="20dp"
+            android:paddingEnd="20dp"
+            android:paddingTop="12dp"
+            android:paddingBottom="12dp"
+            android:text="@string/option_remember_choice"
+            android:textColor="?attr/colorOnSurface"
+            android:textSize="16sp"
+            app:showText="false" />
+
+    </com.google.android.material.card.MaterialCardView>
 
 </LinearLayout>
