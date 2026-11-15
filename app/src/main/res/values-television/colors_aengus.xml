@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="aengus_paper">#111213</color>
+    <color name="aengus_surface">#1A1A1D</color>
+    <color name="aengus_ink">#CDCAC1</color>
+    <color name="aengus_ink_soft">#BEBBB2</color>
+    <color name="aengus_line">#888A96</color>
+    <color name="aengus_action">#BBBBDD</color>
+    <color name="aengus_on_action">#111213</color>
+    <color name="aengus_focus">#8387C3</color>
+</resources>
