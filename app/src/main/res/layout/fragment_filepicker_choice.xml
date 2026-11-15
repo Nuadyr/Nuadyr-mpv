@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:layout_margin="64dp"
+    android:layout_margin="24dp"
     android:gravity="center_vertical"
     android:orientation="vertical">
 
@@ -11,38 +12,49 @@
         android:id="@android:id/message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginBottom="16dp"
         android:gravity="center"
-        android:textAppearance="@style/TextAppearance.AppCompat.Large"
+        android:textAppearance="?attr/textAppearanceHeadlineSmall"
+        android:textColor="?attr/colorOnSurface"
         tools:text="Heading" />
 
     <Button
         android:id="@+id/fileBtn"
+        style="@style/Widget.Material3.Button"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginTop="16dp"
-        android:layout_marginBottom="16dp"
-        android:paddingVertical="16dp"
-        android:text="@string/action_pick_file_old" />
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:minHeight="60dp"
+        android:text="@string/action_pick_file_old"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        app:cornerRadius="20dp" />
 
     <Button
         android:id="@+id/urlBtn"
+        style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:layout_marginBottom="16dp"
-        android:paddingVertical="16dp"
-        android:text="@string/action_open_url" />
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:minHeight="60dp"
+        android:text="@string/action_open_url"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        app:cornerRadius="20dp" />
 
     <Button
         android:id="@+id/docBtn"
+        style="@style/Widget.Material3.Button.TonalButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginStart="16dp"
-        android:layout_marginEnd="16dp"
-        android:paddingVertical="16dp"
-        android:text="@string/action_open_doc" />
+        android:layout_marginTop="6dp"
+        android:layout_marginBottom="6dp"
+        android:minHeight="60dp"
+        android:text="@string/action_open_doc"
+        android:textAllCaps="false"
+        android:textSize="16sp"
+        app:cornerRadius="20dp" />
 
 </LinearLayout>
