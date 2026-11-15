@@ -1,17 +1,52 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <style name="FilePickerTheme" parent="Theme.AppCompat">
-        <item name="nnf_separator_color">@color/primary</item>
 
-        <!-- Set these to match your theme -->
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
+    <!-- ============================================================
+         Themes
+         Every phone/tablet screen now sits on one Material3 day/night base whose colour roles are
+         the Aengus tokens, so light, dark and dynamic colour all stay consistent.
+         ============================================================ -->
+
+    <style name="Base.Aengus" parent="Theme.Material3.DayNight">
+        <item name="colorPrimary">@color/aengus_action</item>
+        <item name="colorOnPrimary">@color/aengus_on_action</item>
+        <item name="colorPrimaryContainer">@color/aengus_tonal</item>
+        <item name="colorOnPrimaryContainer">@color/aengus_ink</item>
+        <item name="colorSecondary">@color/aengus_action</item>
+        <item name="colorOnSecondary">@color/aengus_on_action</item>
+        <item name="colorSecondaryContainer">@color/aengus_tonal</item>
+        <item name="colorOnSecondaryContainer">@color/aengus_ink</item>
+
+        <item name="android:colorBackground">@color/aengus_paper</item>
+        <item name="colorSurface">@color/aengus_paper</item>
+        <item name="colorOnSurface">@color/aengus_ink</item>
+        <item name="colorSurfaceVariant">@color/aengus_tonal</item>
+        <item name="colorOnSurfaceVariant">@color/aengus_ink_soft</item>
+        <item name="colorSurfaceContainerLowest">@color/aengus_paper</item>
+        <item name="colorSurfaceContainerLow">@color/aengus_surface</item>
+        <item name="colorSurfaceContainer">@color/aengus_surface</item>
+        <item name="colorSurfaceContainerHigh">@color/aengus_surface</item>
+        <item name="colorSurfaceContainerHighest">@color/aengus_tonal</item>
+        <item name="colorOutline">@color/aengus_line</item>
+        <item name="colorOutlineVariant">@color/aengus_outline_soft</item>
+        <item name="colorError">@color/aengus_error</item>
+
         <item name="colorAccent">@color/accent</item>
+        <item name="colorControlActivated">?attr/colorPrimary</item>
 
-        <!-- Need to set this also to style create folder dialog -->
-        <item name="alertDialogTheme">@style/FilePickerTheme.AlertDialog</item>
-        <item name="android:textColorPrimary">@android:color/background_light</item>
-        <item name="android:textColorLink">@android:color/background_light</item>
+        <item name="shapeAppearanceSmallComponent">@style/ShapeAppearance.Aengus.Small</item>
+        <item name="shapeAppearanceMediumComponent">@style/ShapeAppearance.Aengus.Medium</item>
+        <item name="shapeAppearanceLargeComponent">@style/ShapeAppearance.Aengus.Large</item>
+
+        <item name="actionBarStyle">@style/Widget.Aengus.ActionBar</item>
+        <item name="actionBarTheme">@style/ThemeOverlay.Aengus.ActionBar</item>
+        <item name="alertDialogTheme">@style/AppTheme.Preference.AlertDialog</item>
+    </style>
+
+    <!-- Home screen and file picker -->
+    <style name="FilePickerTheme" parent="Base.Aengus">
+        <item name="nnf_separator_color">@color/aengus_outline_soft</item>
+        <item name="android:statusBarColor">@color/aengus_paper</item>
     </style>
 
     <style name="FilePickerThemeSpecial" parent="FilePickerTheme">
@@ -19,13 +54,10 @@
         <item name="android:windowTranslucentNavigation">true</item>
     </style>
 
-    <style name="FilePickerTheme.AlertDialog" parent="Theme.AppCompat.Dialog.Alert">
-        <item name="colorPrimary">@color/primary</item>
-        <item name="colorPrimaryDark">@color/primary_dark</item>
-    </style>
+    <style name="FilePickerTheme.AlertDialog" parent="AppTheme.Preference.AlertDialog" />
 
     <!-- theme for player UI -->
-    <style name="AppTheme" parent="Theme.AppCompat.Light">
+    <style name="AppTheme" parent="Base.Aengus">
         <item name="windowNoTitle">true</item>
         <item name="windowActionBar">false</item>
         <item name="android:windowTranslucentNavigation">true</item>
@@ -35,9 +67,8 @@
     </style>
 
     <!-- theme for preferences -->
-    <style name="AppTheme.Preference" parent="Theme.Material3.DayNight">
+    <style name="AppTheme.Preference" parent="Base.Aengus">
         <item name="toolbarStyle">@style/AppTheme.Toolbar.Style</item>
-        <item name="alertDialogTheme">@style/AppTheme.Preference.AlertDialog</item>
     </style>
 
     <style name="AppTheme.Toolbar.Style" parent="Widget.Material3.Toolbar">
@@ -47,12 +78,219 @@
     <style name="AppTheme.Preference.AlertDialog" parent="ThemeOverlay.Material3.MaterialAlertDialog">
         <item name="dialogCornerRadius">28dp</item>
         <item name="cornerFamily">rounded</item>
-        <item name="android:colorBackground">?attr/colorSurface</item>
     </style>
 
+    <!-- Overlay for controls that float over video: always dark glass, always Bone and Periwinkle. -->
+    <style name="ThemeOverlay.Aengus.Player" parent="ThemeOverlay.AppCompat.Dark">
+        <item name="colorPrimary">@color/player_accent</item>
+        <item name="colorControlNormal">@color/tint_normal</item>
+        <item name="colorControlActivated">@color/player_accent</item>
+        <item name="colorControlHighlight">@color/player_ripple</item>
+        <item name="android:textColorPrimary">@color/tint_normal</item>
+    </style>
+
+    <style name="ThemeOverlay.Aengus.ActionBar" parent="ThemeOverlay.AppCompat">
+        <item name="colorControlNormal">?attr/colorOnSurface</item>
+        <item name="android:textColorPrimary">?attr/colorOnSurface</item>
+        <item name="android:textColorSecondary">?attr/colorOnSurfaceVariant</item>
+    </style>
 
     <!-- Material3 Switches -->
     <style name="Preference.SwitchPreferenceCompat" parent="Preference.SwitchPreferenceCompat.Material" tools:override="true">
         <item name="android:widgetLayout">@layout/material_preferences_switch</item>
+    </style>
+
+    <!-- ============================================================
+         Shapes: friendlier corners everywhere
+         ============================================================ -->
+
+    <style name="ShapeAppearance.Aengus.Small" parent="ShapeAppearance.Material3.SmallComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">12dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Aengus.Medium" parent="ShapeAppearance.Material3.MediumComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">20dp</item>
+    </style>
+
+    <style name="ShapeAppearance.Aengus.Large" parent="ShapeAppearance.Material3.LargeComponent">
+        <item name="cornerFamily">rounded</item>
+        <item name="cornerSize">28dp</item>
+    </style>
+
+    <!-- ============================================================
+         Type
+         ============================================================ -->
+
+    <style name="TextAppearance.Aengus.ActionBarTitle" parent="TextAppearance.AppCompat.Widget.ActionBar.Title">
+        <item name="android:textSize">22sp</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.DialogTitle" parent="TextAppearance.Material3.TitleLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.Label" parent="TextAppearance.Material3.LabelLarge">
+        <item name="android:textColor">?attr/colorOnSurfaceVariant</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.Value" parent="TextAppearance.Material3.HeadlineSmall">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.Mono" parent="TextAppearance.Material3.BodyMedium">
+        <item name="android:fontFamily">monospace</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.ListItem" parent="TextAppearance.Material3.BodyLarge">
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- ============================================================
+         Bars
+         ============================================================ -->
+
+    <style name="Widget.Aengus.ActionBar" parent="Widget.AppCompat.ActionBar.Solid">
+        <item name="background">?attr/colorSurface</item>
+        <item name="titleTextStyle">@style/TextAppearance.Aengus.ActionBarTitle</item>
+        <item name="elevation">0dp</item>
+        <item name="theme">@style/ThemeOverlay.Aengus.ActionBar</item>
+    </style>
+
+    <!-- ============================================================
+         Buttons: dialogs and menus
+         ============================================================ -->
+
+    <!-- A full-width row in a menu: left aligned, generous touch target. -->
+    <style name="Widget.Aengus.Button.Menu" parent="Widget.Material3.Button.TextButton">
+        <item name="android:gravity">start|center_vertical</item>
+        <item name="android:minHeight">52dp</item>
+        <item name="android:paddingStart">16dp</item>
+        <item name="android:paddingEnd">16dp</item>
+        <item name="android:insetTop">2dp</item>
+        <item name="android:insetBottom">2dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+        <item name="cornerRadius">16dp</item>
+    </style>
+
+    <!-- Small tonal companion beside a menu row (prev / next / stats level). -->
+    <style name="Widget.Aengus.Button.Chip" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">8dp</item>
+        <item name="android:paddingEnd">8dp</item>
+        <item name="android:insetTop">4dp</item>
+        <item name="android:insetBottom">4dp</item>
+        <item name="android:layout_marginStart">4dp</item>
+        <item name="android:textSize">14sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">14dp</item>
+    </style>
+
+    <!-- Action at the bottom of a dialog. -->
+    <style name="Widget.Aengus.Button.Dialog" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minHeight">52dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+    </style>
+
+    <!-- Round plus / minus for the number pickers. -->
+    <style name="Widget.Aengus.Button.Stepper" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:minWidth">56dp</item>
+        <item name="android:minHeight">56dp</item>
+        <item name="android:paddingStart">0dp</item>
+        <item name="android:paddingEnd">0dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">24sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="cornerRadius">28dp</item>
+    </style>
+
+    <!-- Segment in the audio / subtitle track switcher. Backgrounds are swapped from code, so this stays a plain AppCompat button. -->
+    <style name="Widget.Aengus.Button.Segment" parent="Widget.AppCompat.Button.Borderless">
+        <item name="android:minHeight">48dp</item>
+        <item name="android:textSize">15sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">?attr/colorOnSurface</item>
+    </style>
+
+    <!-- Home screen tiles -->
+    <style name="Widget.Aengus.Button.Tile.Filled" parent="Widget.Material3.Button">
+        <item name="android:gravity">center</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="iconGravity">top</item>
+        <item name="iconSize">36dp</item>
+        <item name="iconPadding">12dp</item>
+    </style>
+
+    <style name="Widget.Aengus.Button.Tile.Tonal" parent="Widget.Material3.Button.TonalButton">
+        <item name="android:gravity">center</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:paddingStart">12dp</item>
+        <item name="android:paddingEnd">12dp</item>
+        <item name="android:textSize">16sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="cornerRadius">28dp</item>
+        <item name="iconGravity">top</item>
+        <item name="iconSize">36dp</item>
+        <item name="iconPadding">12dp</item>
+    </style>
+
+    <!-- ============================================================
+         Player overlay
+         ============================================================ -->
+
+    <style name="Widget.Aengus.Player.IconButton" parent="Widget.AppCompat.ImageButton">
+        <item name="android:background">?attr/selectableItemBackgroundBorderless</item>
+        <item name="android:minWidth">44dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:padding">10dp</item>
+        <item name="android:scaleType">fitCenter</item>
+    </style>
+
+    <!-- Decoder and speed read-outs: tiny text buttons that stay inside one row. -->
+    <style name="Widget.Aengus.Player.TextButton" parent="Widget.Material3.Button.TextButton">
+        <item name="android:minWidth">0dp</item>
+        <item name="android:minHeight">44dp</item>
+        <item name="android:paddingStart">4dp</item>
+        <item name="android:paddingEnd">4dp</item>
+        <item name="android:insetTop">0dp</item>
+        <item name="android:insetBottom">0dp</item>
+        <item name="android:textSize">12sp</item>
+        <item name="android:textAllCaps">false</item>
+        <item name="android:fontFamily">sans-serif-medium</item>
+        <item name="android:textColor">@color/tint_normal</item>
+        <item name="cornerRadius">16dp</item>
+    </style>
+
+    <style name="TextAppearance.Aengus.PlayerTime" parent="TextAppearance.Material3.LabelMedium">
+        <item name="android:textColor">@color/player_ink_soft</item>
+        <item name="android:fontFeatureSettings">tnum</item>
+    </style>
+
+    <!-- Seekbar colours come from ThemeOverlay.Aengus.Player (activated = periwinkle). -->
+    <style name="Widget.Aengus.Player.SeekBar" parent="Widget.AppCompat.SeekBar">
+        <item name="android:progressBackgroundTint">@color/tint_seekbar_bg</item>
+        <item name="android:minHeight">32dp</item>
+        <item name="android:maxHeight">32dp</item>
     </style>
 </resources>
