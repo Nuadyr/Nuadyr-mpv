@@ -1,7 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:orientation="vertical" android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:paddingTop="12dp"
+    android:paddingBottom="8dp">
 
     <!-- Since this dialog does not scroll, don't add too many buttons here! -->
 
@@ -11,89 +16,79 @@
 
         <Button
             android:id="@+id/audioBtn"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Menu"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/open_external_audio"
-            android:textAllCaps="false" />
+            android:text="@string/open_external_audio" />
 
         <Button
             android:id="@+id/subBtn"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Menu"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="@string/open_external_sub"
-            android:textAllCaps="false" />
+            android:text="@string/open_external_sub" />
     </TableRow>
 
     <Button
         android:id="@+id/playlistBtn"
-        style="@style/Widget.AppCompat.Button.Borderless"
+        style="@style/Widget.Aengus.Button.Menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/action_playlist"
-        android:textAllCaps="false" />
+        android:text="@string/action_playlist" />
 
     <Button
         android:id="@+id/backgroundBtn"
-        style="@style/Widget.AppCompat.Button.Borderless"
+        style="@style/Widget.Aengus.Button.Menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/resume_bg_playback"
-        android:textAllCaps="false" />
+        android:text="@string/resume_bg_playback" />
 
     <TableRow
         android:id="@+id/rowChapter"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content">
+        android:layout_height="wrap_content"
+        android:gravity="center_vertical">
 
         <Button
             android:id="@+id/chapterBtn"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Menu"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="4"
-            android:text="@string/chapter_button"
-            android:textAllCaps="false" />
+            android:layout_weight="3"
+            android:text="@string/chapter_button" />
 
         <Button
             android:id="@+id/chapterPrev"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Chip"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/alpha_darken"
-            android:text="@string/dialog_prev"
-            android:textAllCaps="false" />
+            android:text="@string/dialog_prev" />
 
         <Button
             android:id="@+id/chapterNext"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Chip"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:background="@drawable/alpha_darken"
-            android:text="@string/dialog_next"
-            android:textAllCaps="false" />
+            android:text="@string/dialog_next" />
 
     </TableRow>
 
     <Button
         android:id="@+id/advancedBtn"
-        style="@style/Widget.AppCompat.Button.Borderless"
+        style="@style/Widget.Aengus.Button.Menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/advanced_menu"
-        android:textAllCaps="false" />
+        android:text="@string/advanced_menu" />
 
     <Button
         android:id="@+id/orientationBtn"
-        style="@style/Widget.AppCompat.Button.Borderless"
+        style="@style/Widget.Aengus.Button.Menu"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="@string/switch_orientation"
-        android:textAllCaps="false" />
+        android:text="@string/switch_orientation" />
 
 </LinearLayout>
