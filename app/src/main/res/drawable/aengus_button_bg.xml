@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Button: filled. Focused: ring, then a gap in the page colour, then the fill (the kit's focus ring). -->
+<selector xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:state_pressed="true">
+        <inset
+            android:insetLeft="8dp"
+            android:insetTop="8dp"
+            android:insetRight="8dp"
+            android:insetBottom="8dp">
+            <shape android:shape="rectangle">
+                <solid android:color="@color/aengus_ink" />
+                <corners android:radius="8dp" />
+            </shape>
+        </inset>
+    </item>
+    <item android:state_focused="true">
+        <layer-list>
+            <item>
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/aengus_focus" />
+                    <corners android:radius="16dp" />
+                </shape>
+            </item>
+            <item
+                android:left="4dp"
+                android:top="4dp"
+                android:right="4dp"
+                android:bottom="4dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/aengus_paper" />
+                    <corners android:radius="12dp" />
+                </shape>
+            </item>
+            <item
+                android:left="8dp"
+                android:top="8dp"
+                android:right="8dp"
+                android:bottom="8dp">
+                <shape android:shape="rectangle">
+                    <solid android:color="@color/aengus_action" />
+                    <corners android:radius="8dp" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+    <item>
+        <inset
+            android:insetLeft="8dp"
+            android:insetTop="8dp"
+            android:insetRight="8dp"
+            android:insetBottom="8dp">
+            <shape android:shape="rectangle">
+                <solid android:color="@color/aengus_action" />
+                <corners android:radius="8dp" />
+            </shape>
+        </inset>
+    </item>
+</selector>
