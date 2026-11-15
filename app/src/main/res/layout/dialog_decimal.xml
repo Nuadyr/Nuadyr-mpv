@@ -4,22 +4,29 @@
     android:layout_height="match_parent"
     android:gravity="center_horizontal"
     android:orientation="vertical"
+    android:paddingStart="20dp"
+    android:paddingEnd="20dp"
+    android:paddingTop="8dp"
+    android:paddingBottom="8dp"
     android:textAlignment="center">
 
     <TextView
         android:id="@+id/label1"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/track_primary" />
+        android:text="@string/track_primary"
+        android:textAppearance="@style/TextAppearance.Aengus.Label" />
 
     <TableRow
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:layout_marginBottom="12dp"
         android:gravity="center">
 
         <Button
             android:id="@+id/btnMinus"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Stepper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/btn_minus" />
@@ -28,13 +35,17 @@
             android:id="@+id/editText"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
             android:autofillHints=""
-            android:ems="3"
-            android:inputType="numberSigned|numberDecimal" />
+            android:ems="4"
+            android:gravity="center"
+            android:inputType="numberSigned|numberDecimal"
+            android:textAppearance="@style/TextAppearance.Aengus.Value" />
 
         <Button
             android:id="@+id/btnPlus"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Stepper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/btn_plus" />
@@ -44,17 +55,19 @@
         android:id="@+id/label2"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="@string/track_secondary" />
+        android:text="@string/track_secondary"
+        android:textAppearance="@style/TextAppearance.Aengus.Label" />
 
     <TableRow
         android:id="@+id/rowSecondary"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
         android:gravity="center">
 
         <Button
             android:id="@+id/btnMinus2"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Stepper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/btn_minus" />
@@ -63,13 +76,17 @@
             android:id="@+id/editText2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
+            android:layout_marginStart="12dp"
+            android:layout_marginEnd="12dp"
             android:autofillHints=""
-            android:ems="3"
-            android:inputType="numberSigned|numberDecimal" />
+            android:ems="4"
+            android:gravity="center"
+            android:inputType="numberSigned|numberDecimal"
+            android:textAppearance="@style/TextAppearance.Aengus.Value" />
 
         <Button
             android:id="@+id/btnPlus2"
-            style="@style/Widget.AppCompat.Button.Borderless"
+            style="@style/Widget.Aengus.Button.Stepper"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="@string/btn_plus" />
