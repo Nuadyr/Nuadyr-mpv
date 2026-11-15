@@ -9,4 +9,8 @@
     <color name="aengus_action">#223D55</color>
     <color name="aengus_on_action">#FFFFFF</color>
     <color name="aengus_focus">#111213</color>
+    <!-- Mobile facelift tokens. Tonal = quiet container fill; outline_soft = hairlines that are decoration, not information. -->
+    <color name="aengus_tonal">#E7E9EE</color>
+    <color name="aengus_outline_soft">#D2D4DB</color>
+    <color name="aengus_error">#9C1F17</color>
 </resources>
