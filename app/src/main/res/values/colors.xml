@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The old purple is retired: brand colours now follow the Aengus palette (light and dark). -->
+    <item name="primary" type="color">@color/aengus_action</item>
+    <item name="primary_dark" type="color">@color/primary</item>
+    <item name="accent" type="color">@color/primary</item>
+
+    <!-- Player overlay. It always sits on top of video, so these do not change with day/night. -->
+    <color name="tint_normal">#F2F0E9</color>
+    <color name="tint_disabled">#66CDCAC1</color>
+
+    <!-- Disabled icon tint inside dialogs: follows the dialog surface instead of a fixed black. -->
+    <color name="alpha_disabled">@color/aengus_line</color>
+    <color name="alpha24pct">#3c000000</color>
+    <color name="alpha12pct">#1e000000</color>
+
+    <color name="tint_btn_bg_nofocus">#00000000</color>
+    <color name="tint_btn_bg_focused">#807F7FB2</color>
+
+    <color name="tint_seekbar_bg">#4DCDCAC1</color>
+
+    <color name="player_scrim">#E0111213</color>
+    <color name="player_stroke">#29CDCAC1</color>
+    <color name="player_ink_soft">#BEBBB2</color>
+    <color name="player_accent">#BBBBDD</color>
+    <color name="player_on_accent">#111213</color>
+    <color name="player_ripple">#33BBBBDD</color>
+
+    <!-- 12% black in LIGHT THEME -->
+    <color name="nnf_light_separator_color">#1e000000</color>
+    <!-- 12% white in BLACK THEME -->
+    <color name="nnf_dark_separator_color">#1effffff</color>
+</resources>
