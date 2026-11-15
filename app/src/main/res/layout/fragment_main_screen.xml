@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!-- Phone/tablet home screen. Same ids and view types as layout-television/fragment_main_screen.xml, so view binding keeps working. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:background="@color/aengus_paper"
+    android:clipChildren="false"
+    android:clipToPadding="false"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="24dp">
+    android:padding="16dp">
 
     <ImageView
         android:id="@+id/logo"
@@ -13,35 +17,45 @@
         android:layout_height="0dp"
         android:layout_weight="3"
         android:contentDescription="@string/mpv_activity"
+        android:scaleType="fitCenter"
         app:srcCompat="@drawable/mpv_logo" />
 
-    <!-- FIXME this could look better -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
-        android:gravity="center"
+        android:clipChildren="false"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/docBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/aengus_button_bg"
             android:drawableTop="@drawable/ic_file_open_48dp"
+            android:drawablePadding="8dp"
+            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_open_doc_tree"
-            android:textColor="@android:color/primary_text_dark" />
+            android:textAllCaps="false"
+            android:textColor="@color/aengus_on_action"
+            android:textSize="16sp"
+            app:drawableTint="@color/aengus_on_action" />
 
         <Button
             android:id="@+id/urlBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/aengus_button_bg"
             android:drawableTop="@drawable/ic_link_48dp"
+            android:drawablePadding="8dp"
+            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_open_url"
-            android:textColor="@android:color/primary_text_dark" />
+            android:textAllCaps="false"
+            android:textColor="@color/aengus_on_action"
+            android:textSize="16sp"
+            app:drawableTint="@color/aengus_on_action" />
 
     </LinearLayout>
 
@@ -49,28 +63,38 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="2"
-        android:gravity="center"
+        android:clipChildren="false"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/filepickerBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/aengus_button_bg"
             android:drawableTop="@drawable/ic_folder_white_48dp"
+            android:drawablePadding="8dp"
+            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/file_picker_old"
-            android:textColor="@android:color/primary_text_dark" />
+            android:textAllCaps="false"
+            android:textColor="@color/aengus_on_action"
+            android:textSize="16sp"
+            app:drawableTint="@color/aengus_on_action" />
 
         <Button
             android:id="@+id/settingsBtn"
-            style="@style/Widget.AppCompat.Button.Colored"
             android:layout_width="0dp"
             android:layout_height="match_parent"
             android:layout_weight="1"
+            android:background="@drawable/aengus_button_bg"
             android:drawableTop="@drawable/ic_settings_black_48dp"
+            android:drawablePadding="8dp"
+            android:stateListAnimator="@animator/aengus_focus_scale"
             android:text="@string/action_settings"
-            android:textColor="@android:color/primary_text_dark" />
+            android:textAllCaps="false"
+            android:textColor="@color/aengus_on_action"
+            android:textSize="16sp"
+            app:drawableTint="@color/aengus_on_action" />
 
     </LinearLayout>
 
@@ -78,8 +102,13 @@
         android:id="@+id/switch1"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="@drawable/aengus_row_bg"
+        android:minHeight="56dp"
         android:padding="16dp"
         android:text="@string/option_remember_choice"
+        android:textColor="@color/aengus_ink"
+        android:textSize="16sp"
         app:showText="false" />
 
 </LinearLayout>
