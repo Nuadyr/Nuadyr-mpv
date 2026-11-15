@@ -16,9 +16,12 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
-        <LinearLayout
+        <!--
+          Main control panel: a floating dark-glass card. MPVActivity changes its margins (and corner
+          radius) at runtime for the "controls at bottom" setting.
+        -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/controls"
-            style="?buttonBarStyle"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_alignParentBottom="true"
@@ -27,160 +30,190 @@
             android:layout_marginTop="60dp"
             android:layout_marginRight="24dp"
             android:layout_marginBottom="60dp"
-            android:background="#bf000000"
-            android:orientation="vertical">
+            android:theme="@style/ThemeOverlay.Aengus.Player"
+            app:cardBackgroundColor="@color/player_scrim"
+            app:cardCornerRadius="28dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/player_stroke"
+            app:strokeWidth="1dp">
 
             <LinearLayout
-                android:id="@+id/controls_title_group"
                 android:layout_width="match_parent"
-                android:layout_height="match_parent"
+                android:layout_height="wrap_content"
                 android:orientation="vertical"
-                android:visibility="gone"
-                tools:visibility="visible">
+                android:paddingStart="8dp"
+                android:paddingEnd="8dp"
+                android:paddingTop="6dp"
+                android:paddingBottom="6dp">
 
-                <!-- These two are only used for audio -->
-                <TextView
-                    android:id="@+id/titleTextView"
+                <LinearLayout
+                    android:id="@+id/controls_title_group"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:gravity="center"
-                    android:textColor="@color/tint_normal"
-                    android:textSize="24sp"
+                    android:orientation="vertical"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:paddingTop="8dp"
+                    android:paddingBottom="2dp"
                     android:visibility="gone"
-                    tools:text="Song Title" />
+                    tools:visibility="visible">
 
-                <TextView
-                    android:id="@+id/minorTitleTextView"
+                    <!-- These two are only used for audio -->
+                    <TextView
+                        android:id="@+id/titleTextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:maxLines="2"
+                        android:textColor="@color/tint_normal"
+                        android:textSize="20sp"
+                        android:visibility="gone"
+                        tools:text="Song Title" />
+
+                    <TextView
+                        android:id="@+id/minorTitleTextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="end"
+                        android:gravity="center"
+                        android:maxLines="1"
+                        android:textColor="@color/player_ink_soft"
+                        android:textSize="14sp"
+                        android:visibility="gone"
+                        tools:text="Artist / Album" />
+
+                    <!-- This one for video title display -->
+                    <TextView
+                        android:id="@+id/fullTitleTextView"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:ellipsize="middle"
+                        android:fontFamily="sans-serif-medium"
+                        android:gravity="center"
+                        android:singleLine="true"
+                        android:textColor="@color/tint_normal"
+                        android:textSize="14sp"
+                        tools:text="Video Title" />
+
+                </LinearLayout>
+
+                <!-- prev / next live here for video and are moved to the button row for audio (see MPVActivity.updateAudioUI) -->
+                <LinearLayout
+                    android:id="@+id/controls_seekbar_group"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:gravity="center_vertical"
+                    android:layoutDirection="ltr"
+                    android:orientation="horizontal"
+                    android:weightSum="100">
+
+                    <ImageButton
+                        android:id="@+id/prevBtn"
+                        style="@style/Widget.Aengus.Player.IconButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/dialog_prev"
+                        app:srcCompat="@drawable/ic_skip_previous_black_24dp"
+                        app:tint="@color/tint_normal" />
+
+                    <TextView
+                        android:id="@+id/playbackPositionTxt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"
+                        android:textAppearance="@style/TextAppearance.Aengus.PlayerTime"
+                        tools:text="00:00" />
+
+                    <SeekBar
+                        android:id="@+id/playbackSeekbar"
+                        style="@style/Widget.Aengus.Player.SeekBar"
+                        android:layout_width="0dp"
+                        android:layout_height="40dp"
+                        android:layout_gravity="center_vertical"
+                        android:layout_weight="100" />
+
+                    <TextView
+                        android:id="@+id/playbackDurationTxt"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:gravity="center"
+                        android:paddingStart="4dp"
+                        android:paddingEnd="4dp"
+                        android:textAppearance="@style/TextAppearance.Aengus.PlayerTime"
+                        tools:text="13:37" />
+
+                    <ImageButton
+                        android:id="@+id/nextBtn"
+                        style="@style/Widget.Aengus.Player.IconButton"
+                        android:layout_width="wrap_content"
+                        android:layout_height="48dp"
+                        android:contentDescription="@string/dialog_next"
+                        app:srcCompat="@drawable/ic_skip_next_black_24dp"
+                        app:tint="@color/tint_normal" />
+
+                </LinearLayout>
+
+                <!-- Children share the row by weight so it fits every mode (video: 5 buttons, audio: 5 different ones). -->
+                <LinearLayout
+                    android:id="@+id/controls_button_group"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:gravity="center"
-                    android:textColor="@color/tint_normal"
-                    android:textSize="14sp"
-                    android:visibility="gone"
-                    tools:text="Artist / Album" />
+                    android:layoutDirection="ltr"
+                    android:orientation="horizontal">
 
-                <!-- This one for video title display -->
-                <TextView
-                    android:id="@+id/fullTitleTextView"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:ellipsize="middle"
-                    android:gravity="center"
-                    android:singleLine="true"
-                    android:textColor="@color/tint_normal"
-                    android:textSize="16sp"
-                    tools:text="Video Title" />
+                    <ImageButton
+                        android:id="@+id/cycleAudioBtn"
+                        style="@style/Widget.Aengus.Player.IconButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        app:srcCompat="@drawable/ic_audiotrack_black_24dp"
+                        app:tint="@color/tint_normal" />
 
+                    <ImageButton
+                        android:id="@+id/cycleSubsBtn"
+                        style="@style/Widget.Aengus.Player.IconButton"
+                        android:layout_width="0dp"
+                        android:layout_height="48dp"
+                        android:layout_weight="1"
+                        app:srcCompat="@drawable/ic_subtitles_black_24dp"
+                        app:tint="@color/tint_normal" />
+
+                    <!-- The one big target: Periwinkle so it reads as the primary action. -->
+                    <ImageButton
+                        android:id="@+id/playBtn"
+                        style="@style/Widget.Aengus.Player.IconButton"
+                        android:layout_width="0dp"
+                        android:layout_height="56dp"
+                        android:layout_weight="1.4"
+                        android:padding="13dp"
+                        app:tint="@color/player_accent"
+                        tools:src="@drawable/ic_play_arrow_black_24dp" />
+
+                    <Button
+                        android:id="@+id/cycleDecoderBtn"
+                        style="@style/Widget.Aengus.Player.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.2"
+                        tools:text="HW+" />
+
+                    <Button
+                        android:id="@+id/cycleSpeedBtn"
+                        style="@style/Widget.Aengus.Player.TextButton"
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1.2"
+                        tools:text="1.00X" />
+
+                </LinearLayout>
             </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/controls_seekbar_group"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layoutDirection="ltr"
-                android:orientation="horizontal"
-                android:weightSum="100">
-
-                <ImageButton
-                    android:id="@+id/prevBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="48dp"
-                    android:minHeight="48dp"
-                    app:srcCompat="@drawable/ic_skip_previous_black_24dp"
-                    app:tint="@color/tint_normal" />
-
-                <TextView
-                    android:id="@+id/playbackPositionTxt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:textColor="@android:color/white"
-                    tools:text="00:00" />
-
-                <SeekBar
-                    android:id="@+id/playbackSeekbar"
-                    android:layout_width="0dp"
-                    android:layout_height="match_parent"
-                    android:layout_gravity="center_vertical"
-                    android:layout_weight="100"
-                    android:minHeight="24dp"
-                    android:progressBackgroundTint="@color/tint_seekbar_bg" />
-
-                <TextView
-                    android:id="@+id/playbackDurationTxt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="match_parent"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:textColor="@android:color/white"
-                    tools:text="13:37" />
-
-                <ImageButton
-                    android:id="@+id/nextBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:minWidth="48dp"
-                    android:minHeight="48dp"
-                    app:srcCompat="@drawable/ic_skip_next_black_24dp"
-                    app:tint="@color/tint_normal" />
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:id="@+id/controls_button_group"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"
-                android:layoutDirection="ltr"
-                android:gravity="center"
-                android:orientation="horizontal">
-
-                <ImageButton
-                    android:id="@+id/cycleAudioBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:srcCompat="@drawable/ic_audiotrack_black_24dp"
-                    app:tint="@color/tint_normal" />
-
-                <ImageButton
-                    android:id="@+id/cycleSubsBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    app:srcCompat="@drawable/ic_subtitles_black_24dp"
-                    app:tint="@color/tint_normal" />
-
-                <ImageButton
-                    android:id="@+id/playBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@android:color/white"
-                    app:tint="@color/tint_normal"
-                    tools:src="@drawable/ic_play_arrow_black_24dp" />
-
-                <Button
-                    android:id="@+id/cycleDecoderBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@android:color/white"
-                    tools:text="HW+" />
-
-                <Button
-                    android:id="@+id/cycleSpeedBtn"
-                    style="?buttonBarButtonStyle"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:textColor="@android:color/white"
-                    tools:text="1.00X" />
-
-            </LinearLayout>
-        </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <TextView
             android:id="@+id/statsTextView"
@@ -189,11 +222,14 @@
             android:layout_alignParentStart="true"
             android:layout_alignParentTop="true"
             android:layout_marginStart="16dp"
+            android:layout_marginTop="8dp"
+            android:fontFamily="monospace"
             android:shadowColor="#000000"
             android:shadowDx="1"
             android:shadowDy="1"
-            android:shadowRadius="1"
-            android:textColor="#00FF00"
+            android:shadowRadius="2"
+            android:textColor="@color/player_accent"
+            android:textSize="12sp"
             android:visibility="gone"
             tools:text="60 FPS"
             tools:visibility="visible" />
@@ -202,77 +238,101 @@
             android:id="@+id/gestureTextView"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
+            android:fontFamily="sans-serif-medium"
             android:gravity="center"
             android:shadowColor="#000000"
             android:shadowDx="0"
             android:shadowDy="0"
-            android:shadowRadius="4"
+            android:shadowRadius="8"
             android:textAlignment="center"
-            android:textColor="#ffffff"
-            android:textSize="36sp"
-            android:textStyle="bold"
+            android:textColor="@color/tint_normal"
+            android:textSize="32sp"
             android:visibility="gone"
             tools:text="[gesture]" />
 
-        <LinearLayout
+        <!--
+          Top-right pill. The card is what fades in and out (id top_controls); the buttons stay direct
+          children of top_controls_group because D-pad navigation walks that group's children.
+        -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/top_controls"
-            style="?buttonBarStyle"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:alpha="0.5"
-            android:background="#bf000000"
-            android:orientation="horizontal">
+            android:layout_marginStart="12dp"
+            android:layout_marginTop="12dp"
+            android:layout_marginEnd="12dp"
+            android:theme="@style/ThemeOverlay.Aengus.Player"
+            app:cardBackgroundColor="@color/player_scrim"
+            app:cardCornerRadius="24dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/player_stroke"
+            app:strokeWidth="1dp">
 
-            <ImageButton
-                android:id="@+id/topLockBtn"
-                style="?buttonBarButtonStyle"
+            <LinearLayout
+                android:id="@+id/top_controls_group"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:minWidth="40dp"
-                android:minHeight="40dp"
-                android:padding="4dp"
-                app:srcCompat="@drawable/ic_lock_24dp"
-                app:tint="@color/tint_normal" />
+                android:orientation="horizontal"
+                android:padding="2dp">
 
-            <ImageButton
-                android:id="@+id/topPiPBtn"
-                style="?buttonBarButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="40dp"
-                android:minHeight="40dp"
-                android:padding="4dp"
-                app:srcCompat="@drawable/ic_picture_in_picture_24dp"
-                app:tint="@color/tint_normal" />
+                <ImageButton
+                    android:id="@+id/topLockBtn"
+                    style="@style/Widget.Aengus.Player.IconButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    app:srcCompat="@drawable/ic_lock_24dp"
+                    app:tint="@color/tint_normal" />
 
-            <ImageButton
-                android:id="@+id/topMenuBtn"
-                style="?buttonBarButtonStyle"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:minWidth="40dp"
-                android:minHeight="40dp"
-                android:padding="4dp"
-                app:srcCompat="@drawable/ic_settings_black_24dp"
-                app:tint="@color/tint_normal" />
+                <ImageButton
+                    android:id="@+id/topPiPBtn"
+                    style="@style/Widget.Aengus.Player.IconButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    app:srcCompat="@drawable/ic_picture_in_picture_24dp"
+                    app:tint="@color/tint_normal" />
 
-        </LinearLayout>
+                <ImageButton
+                    android:id="@+id/topMenuBtn"
+                    style="@style/Widget.Aengus.Player.IconButton"
+                    android:layout_width="44dp"
+                    android:layout_height="44dp"
+                    android:contentDescription="@string/action_settings"
+                    app:srcCompat="@drawable/ic_settings_black_24dp"
+                    app:tint="@color/tint_normal" />
 
-        <!-- mismatching width/height so that the button appears exactly square?! -->
-        <ImageButton
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Round chip; a card so it needs no drawable of its own. Shown only while the UI is locked. -->
+        <com.google.android.material.card.MaterialCardView
             android:id="@+id/unlockBtn"
-            android:layout_width="48dp"
+            android:layout_width="52dp"
             android:layout_height="52dp"
             android:layout_alignParentTop="true"
             android:layout_alignParentEnd="true"
-            android:layout_marginStart="24dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginEnd="24dp"
-            android:layout_marginBottom="24dp"
+            android:layout_marginTop="16dp"
+            android:layout_marginEnd="16dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:theme="@style/ThemeOverlay.Aengus.Player"
             android:visibility="gone"
-            app:srcCompat="@drawable/ic_lock_open_24dp" />
+            app:cardBackgroundColor="@color/player_scrim"
+            app:cardCornerRadius="26dp"
+            app:cardElevation="0dp"
+            app:strokeColor="@color/player_stroke"
+            app:strokeWidth="1dp">
+
+            <ImageView
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:layout_gravity="center"
+                android:importantForAccessibility="no"
+                app:srcCompat="@drawable/ic_lock_open_24dp"
+                app:tint="@color/tint_normal" />
+
+        </com.google.android.material.card.MaterialCardView>
 
     </RelativeLayout>
 
