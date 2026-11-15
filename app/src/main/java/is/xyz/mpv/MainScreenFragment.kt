@@ -121,6 +121,11 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
         }
 
         onConfigurationChanged(view.resources.configuration)
+
+        // On a TV there is no touch, so the remote needs a first item in focus.
+        if (isTelevision()) {
+            binding.filepickerBtn.requestFocus()
+        }
     }
 
     private fun showDebugMenu() {
@@ -137,8 +142,18 @@ class MainScreenFragment : Fragment(R.layout.fragment_main_screen) {
         }
     }
 
+    private fun isTelevision(): Boolean {
+        val uiMode = requireContext().resources.configuration.uiMode
+        return (uiMode and Configuration.UI_MODE_TYPE_MASK) == Configuration.UI_MODE_TYPE_TELEVISION
+    }
+
     override fun onConfigurationChanged(newConfig: Configuration) {
         super.onConfigurationChanged(newConfig)
+        // a TV screen is wide enough to show the logo next to the action buttons
+        if (isTelevision()) {
+            binding.logo.isVisible = true
+            return
+        }
         // phone screens are too small to show the action buttons alongside the logo
         if (!Utils.isXLargeTablet(requireContext())) {
             binding.logo.isVisible = newConfig.orientation != Configuration.ORIENTATION_LANDSCAPE
