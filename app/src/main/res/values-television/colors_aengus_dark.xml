@@ -9,4 +9,8 @@
     <color name="aengus_action">#BBBBDD</color>
     <color name="aengus_on_action">#111213</color>
     <color name="aengus_focus">#8387C3</color>
+    <!-- Mobile facelift tokens (see values/colors_aengus_light.xml). -->
+    <color name="aengus_tonal">#26272C</color>
+    <color name="aengus_outline_soft">#3A3B42</color>
+    <color name="aengus_error">#F2B8B5</color>
 </resources>
