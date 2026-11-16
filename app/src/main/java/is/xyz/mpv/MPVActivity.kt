@@ -175,6 +175,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     private var autoRotationMode = ""
 
     private var controlsAtBottom = true
+    private var systemInsets = androidx.core.graphics.Insets.NONE
     private var showMediaTitle = false
     private var useTimeRemaining = false
 
@@ -234,6 +235,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
                 bottomMargin = insets.bottom
                 rightMargin = insets.right
             }
+            systemInsets = insets
+            applyControlsLayout()
             WindowInsetsCompat.CONSUMED
         }
 
@@ -1002,20 +1005,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             gestures.setMetrics(dm.widthPixels.toFloat(), dm.heightPixels.toFloat())
         }
 
-        // Adjust control margins
-        binding.controls.updateLayoutParams<MarginLayoutParams> {
-            bottomMargin = if (!controlsAtBottom) {
-                Utils.convertDp(this@MPVActivity, 60f)
-            } else {
-                0
-            }
-            leftMargin = if (!controlsAtBottom) {
-                Utils.convertDp(this@MPVActivity, if (isLandscape) 60f else 24f)
-            } else {
-                0
-            }
-            rightMargin = leftMargin
-        }
+        applyControlsLayout()
 
         // Floating panel is rounded all round; a panel docked to the bottom edge only keeps its top corners.
         val cardRadius = Utils.convertDp(this, 28f).toFloat()
@@ -1025,6 +1015,38 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             .setBottomLeftCornerSize(if (controlsAtBottom) 0f else cardRadius)
             .setBottomRightCornerSize(if (controlsAtBottom) 0f else cardRadius)
             .build()
+    }
+
+    /**
+     * Positions the main control panel.
+     * Floating: normal margins inside the inset area.
+     * Docked: the panel spans the full width and reaches the bottom edge (negative margins cancel the
+     * inset margins on [outside]), and its content is padded so nothing sits under the cutout or
+     * gesture bar. Left and right use the larger inset so the panel is always symmetrical.
+     */
+    private fun applyControlsLayout() {
+        val isLandscape = resources.configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+        val i = systemInsets
+        val side = maxOf(i.left, i.right)
+        val content = binding.controls.getChildAt(0)
+        binding.controls.updateLayoutParams<MarginLayoutParams> {
+            if (controlsAtBottom) {
+                leftMargin = -i.left
+                rightMargin = -i.right
+                bottomMargin = -i.bottom
+            } else {
+                bottomMargin = Utils.convertDp(this@MPVActivity, 60f)
+                leftMargin = Utils.convertDp(this@MPVActivity, if (isLandscape) 60f else 24f)
+                rightMargin = leftMargin
+            }
+        }
+        val basePad = Utils.convertDp(this, 8f)
+        content.setPadding(
+            basePad + if (controlsAtBottom) side else 0,
+            content.paddingTop,
+            basePad + if (controlsAtBottom) side else 0,
+            Utils.convertDp(this, 6f) + if (controlsAtBottom) i.bottom else 0
+        )
     }
 
     private fun onPiPModeChangedImpl(state: Boolean) {
