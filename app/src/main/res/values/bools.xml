@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Frame rate matching is on by default on TVs only (see values-television). -->
+    <bool name="auto_frame_rate_default">false</bool>
+</resources>
