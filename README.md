@@ -1,125 +1,77 @@
-# Nuadyr-mpv
+# Nuadyr-mpv: mpv video player for Android TV
 
-An Android video and audio player. It is a fork of [mpv-android](https://github.com/mpv-android/mpv-android) with a new home screen for Android TV and a restyled UI. Playback is still libmpv.
+Nuadyr-mpv is a video and audio player for Android TV, phones and tablets. It is a fork of [mpv-android](https://github.com/mpv-android/mpv-android) and plays with [libmpv](https://github.com/mpv-player/mpv).
 
 ## What's different
 
-- **Android TV home screen.** A grid of thumbnails for every video and audio file on the device (internal storage, SD cards, USB drives). No buttons.
-- **Match display frame rate.** Asks the display to switch to the video's frame rate, so 24 fps films play without judder. On by default on TVs. See [Frame rate matching](#frame-rate-matching).
-- **Aengus theme.** One palette, shape and focus style across the app, in light and dark. TVs always use the dark palette.
-- **Everything else is mpv-android.** Phones and tablets keep the original button home screen. Playback, gestures and the rest of settings follow upstream.
+- **TV home screen.** A grid of thumbnails for all your videos and audio. No buttons.
+- **Frame rate matching.** Asks the TV to switch to the video's frame rate, for example 23.976 Hz for films.
+- **Resume and progress bars.** Remembers where you stopped and shows it on the tile.
+- **Auto queue.** Pick a file and the ones after it play next.
+- **Aengus theme.** One look in light and dark. TVs always use dark.
+
+Everything else is mpv-android.
+
+## Compared with mpv-android
+
+| | mpv-android | Nuadyr-mpv |
+| --- | --- | --- |
+| Player engine | libmpv | libmpv |
+| Decoding, gestures, subtitles, Open URL, PiP | Yes | Same |
+| Android TV launcher | Yes | Yes |
+| TV home screen | Buttons | Thumbnail grid |
+| Sort, filter, group library | No | Yes |
+| Progress bars | No | Yes |
+| Save position on quit | Off by default | On by default on TV |
+| Match display frame rate | No | Yes, on by default on TV |
+| Theme | Default | Aengus |
+
+Checked against mpv-android commit `ebf1b3f` (8 November 2026).
 
 ## Using it on a TV
 
 | Key | Does |
 | --- | --- |
-| **OK** | Plays the selected file |
-| **Menu**, or hold **OK** | Opens the menu |
+| **OK** | Play |
+| **Menu**, or hold **OK** | Open the menu |
 
-The menu has:
+The menu has Refresh list, Sort by, Show, Group by, Open URL, Browse folders and Settings.
 
-- **Refresh list** (or **Allow storage access** if permission is missing)
-- **Sort by**: newest, oldest, name A-Z, name Z-A, longest, shortest
-- **Show**: videos and audio, videos only, audio only
-- **Group by**: none, type, folder
-- **Open URL**
-- **Browse folders**
-- **Settings**
-
-Sort, show and group choices are remembered. Ringtones, notification sounds and alarms are left out of the grid.
+The grid shows files that Android's media index (MediaStore) lists. If a file is missing, use **Browse folders**.
 
 ## Frame rate matching
 
-**Settings > Video > Match display frame rate** asks the display to switch to the frame rate of the video being played (for example 23.976 Hz for a film), instead of leaving it at the screen's default.
+**Settings > Video > Match display frame rate.** On by default on TVs. Needs Android 11 or newer. Android's own "Match content frame rate" setting can override it.
 
-- **Default:** on for TVs, off for phones and tablets.
-- **Needs Android 11 or newer.** On older versions the switch does nothing.
-- **Android 12 and newer** allow the switch even when it is not seamless, which can briefly blank the screen on some displays.
-- **The system can override it.** If Android's own "Match content frame rate" setting says otherwise, the system wins.
-- **Sync stays correct.** When the display changes mode, the player picks up the new refresh rate, so mpv's video sync follows it.
-- **Resets between files.** The request is cleared when there is no video or the frame rate is unknown.
+## Resume
 
-## Using it on a phone or tablet
-
-The home screen has buttons for opening a folder, picking a file, opening a URL and Settings, plus a "remember my choice" switch.
-
-The app also opens media from other apps:
-
-- Share and "open with" for audio and video
-- `http`, `https`, `ftp`, `rtmp`, `rtsp`, `udp` and similar links
-- `.m3u8`, `.mpd` and `.strm` links
-
-## Player
-
-- Hardware and software decoding, switchable while playing
-- Swipe gestures. Defaults: horizontal seeks, left side brightness, right side volume. Taps are configurable.
-- Playlists, chapters, subtitle and audio tracks, playback speed, aspect ratio
-- Picture-in-Picture and background playback with a media notification
-- Keyboard input mapped to mpv keys
-- Settings: General, UI, Video, Gestures, Advanced (includes editing `mpv.conf` and `input.conf`), Developer, About
+**Settings > General > Save position on quit.** On by default on TVs. Files under 2 minutes are not tracked. A file counts as finished past 95%.
 
 ## Requirements
 
-| | |
-| --- | --- |
-| Android | 6.0+ (minSdk 23), target SDK 36 |
-| Architectures | armeabi-v7a, arm64-v8a, x86, x86_64 (CI builds the first two) |
-| Kotlin / AGP / Gradle | 2.2.21 / 9.2.1 / 9.4.1 |
-| JDK | 17 |
-| NDK | r30 |
+Android 6.0 or newer. Kotlin 2.2.21, AGP 9.2.1, Gradle 9.4.1, JDK 17, NDK r30.
 
-## Build flavours
+## Build
 
-| Flavour | Storage access | minSdk |
-| --- | --- | --- |
-| `default` | Media permissions (`READ_MEDIA_*`, or `READ_EXTERNAL_STORAGE` on older Android) | 23 |
-| `allstorage` | "All files access" (`MANAGE_EXTERNAL_STORAGE`) | 30 |
+Push to GitHub. The `build` workflow makes debug APKs for armeabi-v7a and arm64-v8a and attaches them to a release.
 
-## Building
-
-### With GitHub Actions
-
-Push a commit. The `build` workflow compiles the native libraries, then the app, for armeabi-v7a and arm64-v8a. It uploads the **debug** APKs as workflow artifacts. On pushes (not pull requests) it also publishes a GitHub release called `build-<run number>` with the APKs attached.
-
-Native dependencies are cached, so only the first run is slow.
-
-### On your machine
-
-Linux or macOS only. Windows and WSL do not work.
+To build on Linux or macOS yourself:
 
 ```sh
 cd buildscripts
-./download.sh                    # Android SDK, NDK and dependency sources
-./buildall.sh --arch arm64 mpv   # native libraries (default is 32-bit ARM only)
-./buildall.sh -n                 # the app itself
+./download.sh
+./buildall.sh --arch arm64 mpv
+./buildall.sh -n
 ```
 
-Run `--arch` once for each architecture you want. APKs land in `app/build/outputs/apk/`. See `buildscripts/README.md` for rebuilding a single component and using Android Studio.
+APKs land in `app/build/outputs/apk/`. More in [`buildscripts/README.md`](buildscripts/README.md).
 
-### Things to know
+## FAQ
 
-- CI fetches mpv from its `master` branch, and dav1d and libass unpinned. FFmpeg is pinned (`n9.0.2`). A change upstream can break or alter a build.
-- FFmpeg is built with `--enable-gpl --enable-version3`. Keep that in mind before redistributing APKs.
-- Debug builds only: long-press **Settings** on the phone home screen for the Intent test and Codec info screens.
+**Can I install it next to mpv-android?** No. Both use the package name `is.xyz.mpv`.
 
-## Layout
-
-```
-app/src/main/java/is/xyz/mpv/   Kotlin app
-    MainActivity                  picks the TV or phone home screen
-    TvLibraryFragment             the TV thumbnail grid
-    MainScreenFragment            the phone/tablet home screen
-    MPVActivity, MPVView, MPVLib  player and libmpv bridge
-    preferences/                  settings screens
-app/src/main/java/is/xyz/filepicker/   folder and file picker
-app/src/main/jni/               C++ glue between Java and libmpv
-app/src/main/res/               layouts, strings, Aengus colours and styles
-app/src/debug/                  debug-only test screens
-buildscripts/                   builds FFmpeg, libass, mpv and friends for Android
-docs/, fastlane/                release process, privacy page, store text
-.github/                        CI workflow and issue templates
-```
+**Which Android versions?** 6.0 or newer.
 
 ## Licence
 
-MIT, as upstream. See `LICENSE`. The real work is by the mpv and mpv-android developers.
+MIT, as upstream. See [`LICENSE`](LICENSE).
