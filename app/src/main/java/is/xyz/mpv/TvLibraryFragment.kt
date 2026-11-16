@@ -38,8 +38,10 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.doOnNextLayout
 import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
+import androidx.preference.PreferenceManager
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
+import java.io.File
 import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -50,6 +52,9 @@ import kotlin.math.max
  * (internal storage, SD cards and USB drives) as a grid of thumbnails. There are no buttons:
  * OK plays a file, and Menu (or press and hold OK) opens the extra options, which include how
  * the grid is sorted, filtered and grouped.
+ *
+ * OK also queues the files after the one picked (same section, same kind), so Next works and the
+ * player moves on by itself. Tiles of files that were started and not finished show a progress bar.
  */
 class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private lateinit var binding: FragmentTvLibraryBinding
@@ -70,6 +75,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private var allEntries: List<MediaEntry> = emptyList()
     private val byName = Comparator<MediaEntry> { a, b -> compareNatural(a.title, b.title) }
     private val byId = compareBy<MediaEntry>({ it.isAudio }, { it.id })
+    /** Where playback stopped, by file path. Empty when "Save position on quit" is off. */
+    private var savedProgress: Map<String, WatchProgress.Entry> = emptyMap()
     private var sortOrder = SortOrder.NEWEST
     private var kindFilter = KindFilter.ALL
     private var grouping = Grouping.NONE
@@ -77,6 +84,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         thumbs = ThumbnailLoader(requireContext().applicationContext)
+        savedProgress = loadProgress()
 
         val saved = viewPrefs()
         sortOrder = enumPref(saved, PREF_SORT, SortOrder.NEWEST)
@@ -137,8 +145,11 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     override fun onResume() {
         super.onResume()
         // pick up files added while we were away, without asking for permission again
-        if (resumedOnce)
+        if (resumedOnce) {
+            // the player may have moved bars, whether or not the list of files changed
+            refreshProgress()
             refresh(askForAccess = false)
+        }
         resumedOnce = true
     }
 
@@ -146,6 +157,24 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         super.onDestroy()
         queryExecutor.shutdownNow()
         thumbs.shutdown()
+    }
+
+    // ---- progress ----
+
+    private fun loadProgress(): Map<String, WatchProgress.Entry> {
+        val ctx = requireContext()
+        val resume = PreferenceManager.getDefaultSharedPreferences(ctx)
+            .getBoolean("save_position", resources.getBoolean(R.bool.save_position_default))
+        return if (resume) WatchProgress.readAll(ctx) else emptyMap()
+    }
+
+    private fun refreshProgress() {
+        val updated = loadProgress()
+        if (updated == savedProgress)
+            return
+        val old = savedProgress
+        savedProgress = updated
+        adapter.progressChanged(old, updated)
     }
 
     // ---- access ----
@@ -428,7 +457,27 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         filePickerLauncher.launch(i)
     }
 
-    private fun playFile(filepath: String) {
+    /**
+     * Plays a tile. The file and the ones after it in its section are handed over as one
+     * playlist. That needs plain paths, so a file that cannot be read by path is played alone,
+     * through its content URI, as before (it then has no progress bar).
+     */
+    private fun playEntry(entry: MediaEntry) {
+        if (!isPlayablePath(entry.path)) {
+            playFile(entry.uri.toString())
+            return
+        }
+        val queue = adapter.queueFrom(entry)
+        if (queue.size > 1)
+            playFile(Utils.makeMemoryPlaylist(queue), tvQueue = true)
+        else
+            playFile(entry.path)
+    }
+
+    private fun isPlayablePath(path: String) =
+        path.startsWith("/") && File(path).canRead()
+
+    private fun playFile(filepath: String, tvQueue: Boolean = false) {
         val i: Intent
         if (filepath.startsWith("content://")) {
             i = Intent(Intent.ACTION_VIEW, Uri.parse(filepath))
@@ -436,6 +485,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             i = Intent()
             // if we pass 'filepath' it will go directly to mpv without any processing
             i.putExtra("filepath", filepath)
+            if (tvQueue)
+                i.putExtra(MPVActivity.EXTRA_TV_QUEUE, true)
         }
         i.setClass(requireContext(), MPVActivity::class.java)
         playerLauncher.launch(i)
@@ -451,6 +502,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val isAudio: Boolean,
         val dateAdded: Long,
         val folder: String,
+        /** Full file path, or empty when MediaStore does not give one. */
+        val path: String,
     )
 
     private fun queryAll(ctx: Context): List<MediaEntry> {
@@ -460,7 +513,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         return out
     }
 
-    // DATA is only read for its folder, to group by it. Entries without it land in "unknown folder".
+    // DATA gives the folder to group by and the path to play and track progress by. Entries without
+    // it land in "unknown folder", are played through their content URI and have no progress bar.
     @Suppress("DEPRECATION")
     @SuppressLint("NewApi") // q checks the SDK level
     private fun queryCollection(ctx: Context, audio: Boolean, out: MutableList<MediaEntry>) {
@@ -496,6 +550,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                 while (c.moveToNext()) {
                     val id = c.getLong(idCol)
                     val name = c.getString(nameCol) ?: continue
+                    val path = if (dataCol >= 0) (c.getString(dataCol) ?: "") else ""
                     out.add(MediaEntry(
                         id = id,
                         uri = ContentUris.withAppendedId(base, id),
@@ -503,10 +558,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                         durationMs = c.getLong(durCol),
                         isAudio = audio,
                         dateAdded = c.getLong(addedCol),
-                        folder = if (dataCol >= 0)
-                            (c.getString(dataCol) ?: "").substringBeforeLast('/', "")
-                        else
-                            "",
+                        folder = path.substringBeforeLast('/', ""),
+                        path = path,
                     ))
                 }
             }
@@ -550,6 +603,41 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         /** Position of the first tile (section titles cannot take focus), or NO_POSITION. */
         fun firstItemPosition() = rows.indexOfFirst { it is Row.Item }
 
+        /**
+         * Paths of [entry] and the files after it, in the order shown. The queue stops at the next
+         * section title and skips the other kind (a video does not queue songs). Empty if [entry]
+         * is not in the grid or has no usable path.
+         */
+        fun queueFrom(entry: MediaEntry): List<String> {
+            val start = rows.indexOfFirst {
+                it is Row.Item && it.entry.id == entry.id && it.entry.isAudio == entry.isAudio
+            }
+            if (start < 0)
+                return emptyList()
+            val out = ArrayList<String>()
+            for (i in start until rows.size) {
+                val e = (rows[i] as? Row.Item)?.entry ?: break
+                if (e.isAudio != entry.isAudio || !isQueueable(e.path)) {
+                    if (i == start)
+                        return emptyList()
+                    continue
+                }
+                out.add(e.path)
+                if (out.size >= MAX_QUEUE)
+                    break
+            }
+            return out
+        }
+
+        /** Rebinds just the bar of tiles whose saved position changed, so focus stays put. */
+        fun progressChanged(old: Map<String, WatchProgress.Entry>, new: Map<String, WatchProgress.Entry>) {
+            rows.forEachIndexed { i, row ->
+                if (row is Row.Item && row.entry.path.isNotEmpty() &&
+                    old[row.entry.path] != new[row.entry.path])
+                    notifyItemChanged(i, PAYLOAD_PROGRESS)
+            }
+        }
+
         inner class ItemHolder(val b: ItemTvMediaBinding) : RecyclerView.ViewHolder(b.root)
 
         inner class HeaderHolder(val text: TextView) : RecyclerView.ViewHolder(text)
@@ -575,6 +663,17 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             is Row.Item -> row.entry.id * 2 + if (row.entry.isAudio) 1 else 0
         }
 
+        override fun onBindViewHolder(
+            holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>,
+        ) {
+            val row = rows[position]
+            if (payloads.contains(PAYLOAD_PROGRESS) && row is Row.Item && holder is ItemHolder) {
+                bindProgress(holder.b, row.entry)
+                return
+            }
+            super.onBindViewHolder(holder, position, payloads)
+        }
+
         override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
             when (val row = rows[position]) {
                 is Row.Header -> (holder as HeaderHolder).text.text = row.label
@@ -592,8 +691,9 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             else
                 kind
 
-            b.root.setOnClickListener { playFile(entry.uri.toString()) }
+            b.root.setOnClickListener { playEntry(entry) }
             b.root.setOnLongClickListener { showMenu(); true }
+            bindProgress(b, entry)
 
             b.thumb.tag = entry.uri
             val cached = thumbs.cached(entry.uri)
@@ -606,6 +706,18 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                         showBitmap(b.thumb, bmp)
                 }
             }
+        }
+
+        private fun bindProgress(b: ItemTvMediaBinding, entry: MediaEntry) {
+            val saved = savedProgress[entry.path]
+            if (saved == null) {
+                b.progress.isVisible = false
+                return
+            }
+            b.progress.progress = saved.percent
+            b.progress.contentDescription =
+                b.root.context.getString(R.string.tv_progress_description, saved.percent)
+            b.progress.isVisible = true
         }
 
         private fun showBitmap(view: ImageView, bmp: Bitmap) {
@@ -687,6 +799,9 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         private const val THUMB_HEIGHT = 270
 
         private const val ITEM_SPAN = 1
+        // The queue travels in an Intent extra, which has a size limit, so it is capped.
+        private const val MAX_QUEUE = 300
+        private const val PAYLOAD_PROGRESS = "progress"
         private const val VIEW_TYPE_ITEM = 0
         private const val VIEW_TYPE_HEADER = 1
         private const val HEADER_ID_BASE = -1L
@@ -699,6 +814,10 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         // file paths from MediaStore.DATA, shortened on section titles
         private const val STORAGE_ROOT = "/storage"
         private const val INTERNAL_STORAGE_ROOT = "/storage/emulated/0"
+
+        /** A playlist is plain text, one path per line. */
+        private fun isQueueable(path: String) =
+            path.startsWith("/") && path.none { it == '\n' || it == '\r' || it == '\u0000' }
 
         /** Case-insensitive order that sorts digit runs by value, so "2" comes before "10". */
         private fun compareNatural(a: String, b: String): Int {
