@@ -183,6 +183,8 @@
     <string name="pref_video_fastdecode_title">Low-quality video decoding</string>
     <string name="pref_video_fastdecode_summary">Trades quality for performance and thus fluent playback.\n<b>REDUCES QUALITY A LOT</b></string>
 
+    <string name="pref_auto_frame_rate_title">Match display frame rate</string>
+    <string name="pref_auto_frame_rate_summary">Ask the display to switch to the frame rate of the video. The system setting Match content frame rate can still override this. Needs Android 11 or newer.</string>
     <string name="pref_ignore_audio_focus_title">Ignore audio focus</string>
     <string name="pref_ignore_audio_focus_summary">Do not pause playback or reduce volume when other applications play audio at the same time.</string>
 
