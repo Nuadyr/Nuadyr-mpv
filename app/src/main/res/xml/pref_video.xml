@@ -47,4 +47,11 @@
         android:summary="@string/pref_video_fastdecode_summary"
         android:title="@string/pref_video_fastdecode_title" />
 
+    <SwitchPreferenceCompat
+        android:defaultValue="@bool/auto_frame_rate_default"
+        app:iconSpaceReserved="false"
+        android:key="auto_frame_rate"
+        android:summary="@string/pref_auto_frame_rate_summary"
+        android:title="@string/pref_auto_frame_rate_title" />
+
 </PreferenceScreen>
