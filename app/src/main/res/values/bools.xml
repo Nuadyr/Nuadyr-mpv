@@ -2,4 +2,6 @@
 <resources>
     <!-- Frame rate matching is on by default on TVs only (see values-television). -->
     <bool name="auto_frame_rate_default">false</bool>
+    <!-- Resume where you left off is on by default on TVs only (see values-television). -->
+    <bool name="save_position_default">false</bool>
 </resources>
