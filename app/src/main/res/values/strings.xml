@@ -232,6 +232,7 @@
     <string name="tv_menu_filter">Show</string>
     <string name="tv_menu_group">Group by</string>
     <string name="tv_menu_value_format">%1$s: %2$s</string>
+    <string name="tv_progress_description">%1$d%% watched</string>
     <string name="tv_sort_newest">Newest first</string>
     <string name="tv_sort_oldest">Oldest first</string>
     <string name="tv_sort_name_asc">Name A–Z</string>
