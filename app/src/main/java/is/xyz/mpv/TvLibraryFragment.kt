@@ -13,6 +13,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
+import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -43,8 +44,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import java.util.Locale
+import java.util.concurrent.CountDownLatch
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.math.max
 
 /**
@@ -216,7 +219,11 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
 
     // ---- loading ----
 
-    private fun refresh(askForAccess: Boolean) {
+    /**
+     * [rescan] also asks Android to index files it has not seen yet. Files copied on by USB, a network
+     * share, adb or a file manager are often never indexed, and a plain MediaStore query cannot see them.
+     */
+    private fun refresh(askForAccess: Boolean, rescan: Boolean = false) {
         if (!hasAccess()) {
             allEntries = emptyList()
             adapter.submit(emptyList())
@@ -229,6 +236,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val appContext = requireContext().applicationContext
         try {
             queryExecutor.execute {
+                if (rescan)
+                    rescanStorage(appContext)
                 val found = queryAll(appContext)
                 mainHandler.post {
                     if (!isAdded || generation != loadGeneration)
@@ -285,7 +294,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val ctx = context ?: return
         val entries = listOf<Pair<String, () -> Unit>>(
             getString(if (hasAccess()) R.string.tv_menu_refresh else R.string.tv_menu_allow_access) to
-                { refresh(askForAccess = true) },
+                { refresh(askForAccess = true, rescan = true) },
             menuValue(R.string.tv_menu_sort, sortOrder.label) to { chooseSort() },
             menuValue(R.string.tv_menu_filter, kindFilter.label) to { chooseFilter() },
             menuValue(R.string.tv_menu_group, grouping.label) to { chooseGrouping() },
@@ -505,6 +514,57 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         /** Full file path, or empty when MediaStore does not give one. */
         val path: String,
     )
+
+    /**
+     * Walks internal storage and removable volumes for media files MediaStore does not list, and asks
+     * the media scanner to index them. Best effort: it only sees what the app is allowed to list, and
+     * the walk is capped in depth, file count and time so a big drive cannot stall the refresh.
+     */
+    private fun rescanStorage(ctx: Context) {
+        try {
+            val known = HashSet<String>()
+            for (e in queryAll(ctx))
+                if (e.path.isNotEmpty()) known.add(e.path)
+
+            val roots = ArrayList<File>()
+            roots.add(File(INTERNAL_STORAGE_ROOT))
+            File(STORAGE_ROOT).listFiles()?.forEach {
+                if (it.isDirectory && it.name != "self" && it.name != "emulated")
+                    roots.add(it)
+            }
+
+            val missing = ArrayList<String>()
+            val deadline = System.currentTimeMillis() + RESCAN_WALK_LIMIT_MS
+            fun walk(dir: File, depth: Int) {
+                if (depth > RESCAN_MAX_DEPTH || missing.size >= RESCAN_MAX_FILES ||
+                    System.currentTimeMillis() > deadline)
+                    return
+                val children = dir.listFiles() ?: return
+                for (f in children) {
+                    if (f.name.startsWith('.'))
+                        continue
+                    if (f.isDirectory) {
+                        if (f.name != "Android")
+                            walk(f, depth + 1)
+                    } else if (f.extension.lowercase(Locale.ROOT) in RESCAN_EXTENSIONS &&
+                        f.absolutePath !in known) {
+                        missing.add(f.absolutePath)
+                    }
+                }
+            }
+            roots.forEach { walk(it, 0) }
+            Log.v(TAG, "rescan: ${missing.size} files not in MediaStore")
+            if (missing.isEmpty())
+                return
+
+            val done = CountDownLatch(missing.size)
+            MediaScannerConnection.scanFile(ctx, missing.toTypedArray(), null) { _, _ -> done.countDown() }
+            done.await(RESCAN_WAIT_SECONDS, TimeUnit.SECONDS)
+        } catch (e: Exception) {
+            // includes SecurityException and InterruptedException; the plain query still runs after this
+            Log.w(TAG, "storage rescan failed", e)
+        }
+    }
 
     private fun queryAll(ctx: Context): List<MediaEntry> {
         val out = ArrayList<MediaEntry>()
@@ -812,6 +872,14 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         private const val PREF_GROUP = "group"
 
         // file paths from MediaStore.DATA, shortened on section titles
+        private const val RESCAN_MAX_DEPTH = 12
+        private const val RESCAN_MAX_FILES = 5000
+        private const val RESCAN_WALK_LIMIT_MS = 15_000L
+        private const val RESCAN_WAIT_SECONDS = 20L
+        private val RESCAN_EXTENSIONS = setOf(
+            "mkv", "mp4", "m4v", "avi", "mov", "wmv", "flv", "webm", "ts", "m2ts", "mpg", "mpeg", "3gp",
+            "mts", "vob", "divx", "ogv", "asf", "rm", "rmvb",
+            "mp3", "flac", "m4a", "aac", "ogg", "opus", "wav", "wma", "mka", "ac3", "dts")
         private const val STORAGE_ROOT = "/storage"
         private const val INTERNAL_STORAGE_ROOT = "/storage/emulated/0"
 
