@@ -1947,6 +1947,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String) {
+        // no value means no video, or an unknown frame rate
+        if (property == "container-fps")
+            player.setFrameRateHint(null)
         val metaUpdated = psc.update(property)
         if (metaUpdated)
             updateMediaSession()
@@ -1996,6 +1999,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String, value: Double) {
+        if (property == "container-fps")
+            player.setFrameRateHint(value)
         if (psc.update(property, value))
             updateMediaSession()
 
