@@ -1,6 +1,7 @@
 package `is`.xyz.mpv
 
 import android.content.Context
+import android.hardware.display.DisplayManager
 import android.os.Build
 import android.os.Environment
 import android.preference.PreferenceManager
@@ -40,6 +41,10 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
 
         Log.v(TAG, "Display ${disp.displayId} reports FPS of $refreshRate")
         MPVLib.setOptionString("display-fps-override", refreshRate.toString())
+        displayFps = refreshRate
+
+        autoFrameRate = sharedPreferences.getBoolean("auto_frame_rate",
+            context.resources.getBoolean(R.bool.auto_frame_rate_default))
 
         // set non-complex options
         data class Property(val preferenceName: String, val mpvOption: String)
@@ -190,6 +195,7 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
             Property("loop-file"),
             Property("shuffle", MPV_FORMAT_FLAG),
             Property("hwdec-current"),
+            Property("container-fps", MPV_FORMAT_DOUBLE),
             Property("mute", MPV_FORMAT_FLAG),
             Property("current-tracks/audio/selected")
         )
@@ -389,8 +395,92 @@ internal class MPVView(context: Context, attrs: AttributeSet) : BaseMPVView(cont
         MPVLib.setPropertyBoolean("shuffle", newState)
     }
 
+    // ---- display frame rate matching ----
+
+    private var autoFrameRate = false
+    private var frameRateHint: Double? = null
+
+    /** Frame rate of the current video, or null when there is none or it is unknown. */
+    fun setFrameRateHint(fps: Double?) {
+        frameRateHint = fps
+        // events arrive on the mpv thread
+        post { applyFrameRateHint() }
+    }
+
+    private fun applyFrameRateHint() {
+        if (!autoFrameRate || Build.VERSION.SDK_INT < Build.VERSION_CODES.R)
+            return
+        val surface = holder.surface
+        if (!surface.isValid)
+            return
+        val fps = frameRateHint
+        val rate = if (fps != null && fps.isFinite() && fps > 0.0)
+            fps.toFloat()
+        else
+            FRAME_RATE_NO_PREFERENCE
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S)
+            surface.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE,
+                Surface.CHANGE_FRAME_RATE_ALWAYS)
+        else
+            surface.setFrameRate(rate, Surface.FRAME_RATE_COMPATIBILITY_FIXED_SOURCE)
+        Log.v(TAG, "Frame rate hint: $rate")
+    }
+
+    // ---- display refresh rate tracking ----
+    // A frame rate hint can switch the display mode, so display-fps-override must follow it.
+
+    private var displayFps: Float? = null
+
+    private val displayListener = object : DisplayManager.DisplayListener {
+        override fun onDisplayAdded(displayId: Int) {}
+        override fun onDisplayRemoved(displayId: Int) {}
+        override fun onDisplayChanged(displayId: Int) {
+            val disp = ContextCompat.getDisplayOrDefault(context)
+            if (displayId != disp.displayId)
+                return
+            val rate = disp.mode.refreshRate
+            if (rate == displayFps)
+                return
+            displayFps = rate
+            Log.v(TAG, "Display $displayId now reports FPS of $rate")
+            MPVLib.setPropertyString("display-fps-override", rate.toString())
+        }
+    }
+
+    private fun displayManager() =
+        context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
+
+    private fun stopDisplayTracking() = displayManager().unregisterDisplayListener(displayListener)
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        // null handler: callbacks arrive on the main thread, where this is called
+        if (autoFrameRate)
+            displayManager().registerDisplayListener(displayListener, null)
+    }
+
+    override fun onDetachedFromWindow() {
+        stopDisplayTracking()
+        super.onDetachedFromWindow()
+    }
+
+    // libmpv aborts if it is used after destroy(), so the listener must be gone before that
+    override fun destroy() {
+        stopDisplayTracking()
+        super.destroy()
+    }
+
+    // a new surface starts without the hint, and the property does not fire again
+    override fun surfaceCreated(holder: SurfaceHolder) {
+        super.surfaceCreated(holder)
+        applyFrameRateHint()
+    }
+
     companion object {
         private const val TAG = "mpv"
+
+        // Surface.setFrameRate(): 0 removes the hint
+        private const val FRAME_RATE_NO_PREFERENCE = 0f
 
         // mpv option `hwdec` is set to this
         private const val HWDECS = "mediacodec,mediacodec-copy"
