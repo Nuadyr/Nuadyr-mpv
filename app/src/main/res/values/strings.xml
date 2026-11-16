@@ -212,4 +212,16 @@
     <!-- File picker -->
     <string name="nnf_name">Name</string>
     <string name="nnf_permission_external_write_denied">Permission to access file system denied</string>
+
+         <!-- TV library grid -->
+    <string name="tv_library_title">All videos and audio</string>
+    <string name="tv_library_hint">Press Menu, or press and hold OK, for settings and more.</string>
+    <string name="tv_library_empty">No videos or audio found on this device. Press OK for more options.</string>
+    <string name="tv_library_no_access">Storage access is off, so no files can be listed. Press OK, then choose Allow storage access.</string>
+    <string name="tv_menu_refresh">Refresh list</string>
+    <string name="tv_menu_allow_access">Allow storage access</string>
+    <string name="tv_menu_folders">Browse folders</string>
+    <string name="tv_kind_video">Video</string>
+    <string name="tv_kind_audio">Audio</string>
+    <string name="tv_meta_format">%1$s, %2$s</string>
 </resources>
