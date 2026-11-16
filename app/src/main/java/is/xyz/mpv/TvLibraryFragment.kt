@@ -9,6 +9,7 @@ import android.app.Activity
 import android.content.ContentUris
 import android.content.Context
 import android.content.Intent
+import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
@@ -27,8 +28,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
+import android.widget.TextView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.StringRes
 import androidx.appcompat.app.AlertDialog
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -45,7 +48,8 @@ import kotlin.math.max
 /**
  * Android TV home screen. Lists every video and audio file that MediaStore knows about
  * (internal storage, SD cards and USB drives) as a grid of thumbnails. There are no buttons:
- * OK plays a file, and Menu (or press and hold OK) opens the extra options.
+ * OK plays a file, and Menu (or press and hold OK) opens the extra options, which include how
+ * the grid is sorted, filtered and grouped.
  */
 class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private lateinit var binding: FragmentTvLibraryBinding
@@ -63,9 +67,21 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private var resumedOnce = false
     private var lastPath = ""
 
+    private var allEntries: List<MediaEntry> = emptyList()
+    private val byName = Comparator<MediaEntry> { a, b -> compareNatural(a.title, b.title) }
+    private val byId = compareBy<MediaEntry>({ it.isAudio }, { it.id })
+    private var sortOrder = SortOrder.NEWEST
+    private var kindFilter = KindFilter.ALL
+    private var grouping = Grouping.NONE
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         thumbs = ThumbnailLoader(requireContext().applicationContext)
+
+        val saved = viewPrefs()
+        sortOrder = enumPref(saved, PREF_SORT, SortOrder.NEWEST)
+        kindFilter = enumPref(saved, PREF_FILTER, KindFilter.ALL)
+        grouping = enumPref(saved, PREF_GROUP, Grouping.NONE)
 
         permissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
@@ -96,11 +112,18 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         Utils.handleInsetsAsPadding(binding.root)
 
         ViewCompat.setAccessibilityHeading(binding.heading, true)
+        binding.heading.setText(kindFilter.title)
 
         val metrics = resources.displayMetrics
         val widthDp = metrics.widthPixels / metrics.density
         val spanCount = max(2, ((widthDp - 96f) / TILE_WIDTH_DP).toInt())
-        binding.grid.layoutManager = GridLayoutManager(requireContext(), spanCount)
+        val layout = GridLayoutManager(requireContext(), spanCount)
+        // section titles take a whole row, tiles take one cell
+        layout.spanSizeLookup = object : GridLayoutManager.SpanSizeLookup() {
+            override fun getSpanSize(position: Int) =
+                if (adapter.isHeader(position)) spanCount else ITEM_SPAN
+        }
+        binding.grid.layoutManager = layout
         binding.grid.adapter = adapter
         binding.grid.setHasFixedSize(true)
 
@@ -166,6 +189,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
 
     private fun refresh(askForAccess: Boolean) {
         if (!hasAccess()) {
+            allEntries = emptyList()
             adapter.submit(emptyList())
             showEmpty(R.string.tv_library_no_access)
             if (askForAccess)
@@ -180,11 +204,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                 mainHandler.post {
                     if (!isAdded || generation != loadGeneration)
                         return@post
-                    val changed = adapter.submit(found)
-                    if (found.isEmpty())
-                        showEmpty(R.string.tv_library_empty)
-                    else if (changed || !binding.grid.isVisible)
-                        showGrid()
+                    allEntries = found
+                    showEntries(forceFocus = false)
                 }
             }
         } catch (e: java.util.concurrent.RejectedExecutionException) {
@@ -192,14 +213,30 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         }
     }
 
-    private fun showGrid() {
+    /** Applies the sort, filter and grouping choices to [allEntries] and shows the result. */
+    private fun showEntries(forceFocus: Boolean) {
+        val rows = buildRows(allEntries)
+        val changed = adapter.submit(rows)
+        when {
+            allEntries.isEmpty() -> showEmpty(R.string.tv_library_empty)
+            rows.isEmpty() -> showEmpty(R.string.tv_library_no_match)
+            changed || forceFocus || !binding.grid.isVisible -> showGrid(forceFocus)
+        }
+    }
+
+    private fun showGrid(forceFocus: Boolean) {
         val hadFocus = binding.emptyText.hasFocus()
         binding.emptyText.isVisible = false
         binding.grid.isVisible = true
+        // The tile that had focus may be gone or elsewhere now, so start again at the top.
+        if (forceFocus)
+            binding.grid.scrollToPosition(0)
         // A TV has no pointer, so the remote needs a first tile in focus.
-        if (hadFocus || binding.root.findFocus() == null) {
+        if (forceFocus || hadFocus || binding.root.findFocus() == null) {
             binding.grid.doOnNextLayout {
-                binding.grid.findViewHolderForAdapterPosition(0)?.itemView?.requestFocus()
+                val first = adapter.firstItemPosition()
+                if (first != RecyclerView.NO_POSITION)
+                    binding.grid.findViewHolderForAdapterPosition(first)?.itemView?.requestFocus()
             }
         }
     }
@@ -217,23 +254,160 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     /** Extra options that used to be buttons. Called from MainActivity on the Menu key. */
     fun showMenu() {
         val ctx = context ?: return
-        val labels = arrayOf(
-            getString(if (hasAccess()) R.string.tv_menu_refresh else R.string.tv_menu_allow_access),
-            getString(R.string.action_open_url),
-            getString(R.string.tv_menu_folders),
-            getString(R.string.action_settings),
+        val entries = listOf<Pair<String, () -> Unit>>(
+            getString(if (hasAccess()) R.string.tv_menu_refresh else R.string.tv_menu_allow_access) to
+                { refresh(askForAccess = true) },
+            menuValue(R.string.tv_menu_sort, sortOrder.label) to { chooseSort() },
+            menuValue(R.string.tv_menu_filter, kindFilter.label) to { chooseFilter() },
+            menuValue(R.string.tv_menu_group, grouping.label) to { chooseGrouping() },
+            getString(R.string.action_open_url) to { openUrl() },
+            getString(R.string.tv_menu_folders) to { openFolders() },
+            getString(R.string.action_settings) to
+                { startActivity(Intent(ctx, PreferenceActivity::class.java)) },
         )
         AlertDialog.Builder(ctx)
-            .setItems(labels) { dialog, which ->
+            .setItems(entries.map { it.first }.toTypedArray()) { dialog, which ->
                 dialog.dismiss()
-                when (which) {
-                    0 -> refresh(askForAccess = true)
-                    1 -> openUrl()
-                    2 -> openFolders()
-                    3 -> startActivity(Intent(ctx, PreferenceActivity::class.java))
-                }
+                entries[which].second()
             }
             .show()
+    }
+
+    private fun menuValue(@StringRes title: Int, @StringRes value: Int) =
+        getString(R.string.tv_menu_value_format, getString(title), getString(value))
+
+    // ---- sort, filter, group ----
+
+    private enum class SortOrder(@StringRes val label: Int) {
+        NEWEST(R.string.tv_sort_newest),
+        OLDEST(R.string.tv_sort_oldest),
+        NAME_ASC(R.string.tv_sort_name_asc),
+        NAME_DESC(R.string.tv_sort_name_desc),
+        LONGEST(R.string.tv_sort_longest),
+        SHORTEST(R.string.tv_sort_shortest),
+    }
+
+    private enum class KindFilter(@StringRes val label: Int, @StringRes val title: Int) {
+        ALL(R.string.tv_filter_all, R.string.tv_library_title),
+        VIDEO(R.string.tv_filter_video, R.string.tv_library_title_video),
+        AUDIO(R.string.tv_filter_audio, R.string.tv_library_title_audio);
+
+        fun accepts(entry: MediaEntry) = when (this) {
+            ALL -> true
+            VIDEO -> !entry.isAudio
+            AUDIO -> entry.isAudio
+        }
+    }
+
+    private enum class Grouping(@StringRes val label: Int) {
+        NONE(R.string.tv_group_none),
+        TYPE(R.string.tv_group_type),
+        FOLDER(R.string.tv_group_folder),
+    }
+
+    /** One cell run of the grid: either a section title or a tile. */
+    private sealed interface Row {
+        data class Header(val label: String) : Row
+        data class Item(val entry: MediaEntry) : Row
+    }
+
+    private fun chooseSort() =
+        chooseOption(R.string.tv_menu_sort, SortOrder.entries, { it.label }, sortOrder) {
+            sortOrder = it
+            applyViewOptions()
+        }
+
+    private fun chooseFilter() =
+        chooseOption(R.string.tv_menu_filter, KindFilter.entries, { it.label }, kindFilter) {
+            kindFilter = it
+            applyViewOptions()
+        }
+
+    private fun chooseGrouping() =
+        chooseOption(R.string.tv_menu_group, Grouping.entries, { it.label }, grouping) {
+            grouping = it
+            applyViewOptions()
+        }
+
+    private fun <T> chooseOption(
+        @StringRes title: Int,
+        options: List<T>,
+        labelOf: (T) -> Int,
+        current: T,
+        onPicked: (T) -> Unit,
+    ) {
+        val ctx = context ?: return
+        val labels = options.map { ctx.getString(labelOf(it)) }.toTypedArray()
+        AlertDialog.Builder(ctx)
+            .setTitle(title)
+            .setSingleChoiceItems(labels, options.indexOf(current)) { dialog, which ->
+                dialog.dismiss()
+                onPicked(options[which])
+            }
+            .show()
+    }
+
+    private fun applyViewOptions() {
+        viewPrefs().edit()
+            .putString(PREF_SORT, sortOrder.name)
+            .putString(PREF_FILTER, kindFilter.name)
+            .putString(PREF_GROUP, grouping.name)
+            .apply()
+        binding.heading.setText(kindFilter.title)
+        showEntries(forceFocus = true)
+    }
+
+    private fun viewPrefs() =
+        requireContext().getSharedPreferences(VIEW_PREFS, Context.MODE_PRIVATE)
+
+    private inline fun <reified T : Enum<T>> enumPref(
+        prefs: SharedPreferences, key: String, default: T,
+    ): T = prefs.getString(key, null)
+        ?.let { name -> enumValues<T>().firstOrNull { it.name == name } }
+        ?: default
+
+    private fun buildRows(all: List<MediaEntry>): List<Row> {
+        val shown = all
+            .filter { kindFilter.accepts(it) }
+            .sortedWith(comparatorFor(sortOrder))
+        val groups: List<Pair<String, List<MediaEntry>>> = when (grouping) {
+            Grouping.NONE -> return shown.map { Row.Item(it) }
+            Grouping.TYPE -> {
+                val (audio, video) = shown.partition { it.isAudio }
+                listOf(
+                    getString(R.string.tv_group_video) to video,
+                    getString(R.string.tv_group_audio) to audio,
+                )
+            }
+            Grouping.FOLDER -> shown
+                .groupBy { folderLabel(it.folder) }
+                .toList()
+                .sortedWith { a, b -> compareNatural(a.first, b.first) }
+        }
+        return groups
+            .filter { it.second.isNotEmpty() }
+            .flatMap { (label, entries) -> listOf<Row>(Row.Header(label)) + entries.map { Row.Item(it) } }
+    }
+
+    private fun comparatorFor(order: SortOrder): Comparator<MediaEntry> {
+        val primary: Comparator<MediaEntry> = when (order) {
+            SortOrder.NEWEST -> compareByDescending<MediaEntry> { it.dateAdded }
+            SortOrder.OLDEST -> compareBy<MediaEntry> { it.dateAdded }
+            SortOrder.NAME_ASC -> byName
+            SortOrder.NAME_DESC -> byName.reversed()
+            SortOrder.LONGEST -> compareByDescending<MediaEntry> { it.durationMs }
+            SortOrder.SHORTEST -> compareBy<MediaEntry> { it.durationMs }
+        }
+        // equal keys (many files share a duration or a date) still need a fixed order
+        return primary.then(byName).then(byId)
+    }
+
+    /** Folder of a file as shown on a section title, without the storage prefix. */
+    private fun folderLabel(path: String): String {
+        if (path.isEmpty())
+            return getString(R.string.tv_group_unknown_folder)
+        return path.removePrefix(INTERNAL_STORAGE_ROOT).removePrefix(STORAGE_ROOT).trim('/')
+            .ifEmpty { getString(R.string.tv_group_storage_root) }
     }
 
     private fun openUrl() {
@@ -276,16 +450,18 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val durationMs: Long,
         val isAudio: Boolean,
         val dateAdded: Long,
+        val folder: String,
     )
 
     private fun queryAll(ctx: Context): List<MediaEntry> {
         val out = ArrayList<MediaEntry>()
         queryCollection(ctx, false, out)
         queryCollection(ctx, true, out)
-        out.sortByDescending { it.dateAdded }
         return out
     }
 
+    // DATA is only read for its folder, to group by it. Entries without it land in "unknown folder".
+    @Suppress("DEPRECATION")
     @SuppressLint("NewApi") // q checks the SDK level
     private fun queryCollection(ctx: Context, audio: Boolean, out: MutableList<MediaEntry>) {
         val q = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
@@ -297,7 +473,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                    else MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
             projection = arrayOf(
                 MediaStore.Audio.Media._ID, MediaStore.Audio.Media.DISPLAY_NAME,
-                MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.DATE_ADDED)
+                MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.DATE_ADDED,
+                MediaStore.Audio.Media.DATA)
             // leave out ringtones, notification sounds and alarms
             selection = "${MediaStore.Audio.Media.IS_RINGTONE}=0 AND " +
                 "${MediaStore.Audio.Media.IS_NOTIFICATION}=0 AND ${MediaStore.Audio.Media.IS_ALARM}=0"
@@ -306,7 +483,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                    else MediaStore.Video.Media.EXTERNAL_CONTENT_URI
             projection = arrayOf(
                 MediaStore.Video.Media._ID, MediaStore.Video.Media.DISPLAY_NAME,
-                MediaStore.Video.Media.DURATION, MediaStore.Video.Media.DATE_ADDED)
+                MediaStore.Video.Media.DURATION, MediaStore.Video.Media.DATE_ADDED,
+                MediaStore.Video.Media.DATA)
         }
         try {
             ctx.contentResolver.query(base, projection, selection, null, null)?.use { c ->
@@ -314,6 +492,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                 val nameCol = c.getColumnIndexOrThrow(projection[1])
                 val durCol = c.getColumnIndexOrThrow(projection[2])
                 val addedCol = c.getColumnIndexOrThrow(projection[3])
+                val dataCol = c.getColumnIndex(MediaStore.MediaColumns.DATA)
                 while (c.moveToNext()) {
                     val id = c.getLong(idCol)
                     val name = c.getString(nameCol) ?: continue
@@ -324,6 +503,10 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
                         durationMs = c.getLong(durCol),
                         isAudio = audio,
                         dateAdded = c.getLong(addedCol),
+                        folder = if (dataCol >= 0)
+                            (c.getString(dataCol) ?: "").substringBeforeLast('/', "")
+                        else
+                            "",
                     ))
                 }
             }
@@ -346,39 +529,60 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
 
     // ---- grid ----
 
-    private inner class MediaAdapter : RecyclerView.Adapter<MediaAdapter.Holder>() {
-        private var items: List<MediaEntry> = emptyList()
+    private inner class MediaAdapter : RecyclerView.Adapter<RecyclerView.ViewHolder>() {
+        private var rows: List<Row> = emptyList()
 
         init {
             setHasStableIds(true)
         }
 
         /** Returns false (and leaves the grid alone, so focus is kept) if nothing changed. */
-        fun submit(newItems: List<MediaEntry>): Boolean {
-            if (newItems == items)
+        fun submit(newRows: List<Row>): Boolean {
+            if (newRows == rows)
                 return false
-            items = newItems
+            rows = newRows
             notifyDataSetChanged()
             return true
         }
 
-        inner class Holder(val b: ItemTvMediaBinding) : RecyclerView.ViewHolder(b.root)
+        fun isHeader(position: Int) = rows.getOrNull(position) is Row.Header
 
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): Holder {
-            val b = ItemTvMediaBinding.inflate(LayoutInflater.from(parent.context), parent, false)
-            return Holder(b)
+        /** Position of the first tile (section titles cannot take focus), or NO_POSITION. */
+        fun firstItemPosition() = rows.indexOfFirst { it is Row.Item }
+
+        inner class ItemHolder(val b: ItemTvMediaBinding) : RecyclerView.ViewHolder(b.root)
+
+        inner class HeaderHolder(val text: TextView) : RecyclerView.ViewHolder(text)
+
+        override fun getItemViewType(position: Int) =
+            if (isHeader(position)) VIEW_TYPE_HEADER else VIEW_TYPE_ITEM
+
+        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): RecyclerView.ViewHolder {
+            val inflater = LayoutInflater.from(parent.context)
+            if (viewType == VIEW_TYPE_HEADER) {
+                val text = inflater.inflate(R.layout.item_tv_header, parent, false) as TextView
+                ViewCompat.setAccessibilityHeading(text, true)
+                return HeaderHolder(text)
+            }
+            return ItemHolder(ItemTvMediaBinding.inflate(inflater, parent, false))
         }
 
-        override fun getItemCount() = items.size
+        override fun getItemCount() = rows.size
 
-        override fun getItemId(position: Int): Long {
-            val e = items[position]
-            return e.id * 2 + if (e.isAudio) 1 else 0
+        override fun getItemId(position: Int): Long = when (val row = rows[position]) {
+            // negative, so a title can never share an id with a tile
+            is Row.Header -> HEADER_ID_BASE - position
+            is Row.Item -> row.entry.id * 2 + if (row.entry.isAudio) 1 else 0
         }
 
-        override fun onBindViewHolder(holder: Holder, position: Int) {
-            val entry = items[position]
-            val b = holder.b
+        override fun onBindViewHolder(holder: RecyclerView.ViewHolder, position: Int) {
+            when (val row = rows[position]) {
+                is Row.Header -> (holder as HeaderHolder).text.text = row.label
+                is Row.Item -> bindItem((holder as ItemHolder).b, row.entry)
+            }
+        }
+
+        private fun bindItem(b: ItemTvMediaBinding, entry: MediaEntry) {
             val ctx = b.root.context
 
             b.title.text = entry.title
@@ -481,5 +685,56 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         private const val PLACEHOLDER_PADDING_DP = 28f
         private const val THUMB_WIDTH = 480
         private const val THUMB_HEIGHT = 270
+
+        private const val ITEM_SPAN = 1
+        private const val VIEW_TYPE_ITEM = 0
+        private const val VIEW_TYPE_HEADER = 1
+        private const val HEADER_ID_BASE = -1L
+
+        private const val VIEW_PREFS = "tv_library_view"
+        private const val PREF_SORT = "sort"
+        private const val PREF_FILTER = "filter"
+        private const val PREF_GROUP = "group"
+
+        // file paths from MediaStore.DATA, shortened on section titles
+        private const val STORAGE_ROOT = "/storage"
+        private const val INTERNAL_STORAGE_ROOT = "/storage/emulated/0"
+
+        /** Case-insensitive order that sorts digit runs by value, so "2" comes before "10". */
+        private fun compareNatural(a: String, b: String): Int {
+            var i = 0
+            var j = 0
+            while (i < a.length && j < b.length) {
+                if (a[i].isDigit() && b[j].isDigit()) {
+                    val iEnd = a.digitRunEnd(i)
+                    val jEnd = b.digitRunEnd(j)
+                    // compared as text, so a long run of digits cannot overflow
+                    val x = a.substring(i, iEnd).trimStart('0')
+                    val y = b.substring(j, jEnd).trimStart('0')
+                    val byLength = x.length.compareTo(y.length)
+                    if (byLength != 0)
+                        return byLength
+                    val byDigits = x.compareTo(y)
+                    if (byDigits != 0)
+                        return byDigits
+                    i = iEnd
+                    j = jEnd
+                } else {
+                    val byChar = a[i].lowercaseChar().compareTo(b[j].lowercaseChar())
+                    if (byChar != 0)
+                        return byChar
+                    i++
+                    j++
+                }
+            }
+            return (a.length - i).compareTo(b.length - j)
+        }
+
+        private fun String.digitRunEnd(from: Int): Int {
+            var end = from
+            while (end < length && this[end].isDigit())
+                end++
+            return end
+        }
     }
 }
