@@ -172,6 +172,12 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     private var shouldSavePosition = false
 
+    /** Remembers where each local file stopped, for the progress bars on the TV library tiles. */
+    private val watchProgress by lazy { WatchProgress.Tracker(applicationContext) }
+
+    /** The TV library queued the files after this one. Leaving early is expected, not a mistake. */
+    private var tvQueue = false
+
     private var autoRotationMode = ""
 
     private var controlsAtBottom = true
@@ -305,6 +311,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return
         }
 
+        tvQueue = intent.getBooleanExtra(EXTRA_TV_QUEUE, false)
+
         player.addObserver(this)
         player.initialize(filesDir.path, cacheDir.path)
         player.playFile(filepath)
@@ -390,6 +398,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return
         }
 
+        tvQueue = intent?.getBooleanExtra(EXTRA_TV_QUEUE, false) ?: false
+
         if (!activityIsForeground && didResumeBackgroundPlayback) {
             if (this.newIntentReplace) {
                 MPVLib.command(arrayOf("loadfile", filepath, "replace"))
@@ -462,6 +472,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         activityIsForeground = false
         eventUiHandler.removeCallbacksAndMessages(null)
+        watchProgress.save()
         if (isFinishing) {
             savePosition()
             // tell mpv to shut down so that any other property changes or such are ignored,
@@ -505,7 +516,10 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             0
         this.backgroundPlayMode = getString("background_play", R.string.pref_background_play_default)
         this.noUIPauseMode = getString("no_ui_pause", R.string.pref_no_ui_pause_default)
-        this.shouldSavePosition = prefs.getBoolean("save_position", false)
+        // on by default on TVs, see values-television/bools.xml
+        this.shouldSavePosition = prefs.getBoolean("save_position",
+            resources.getBoolean(R.bool.save_position_default))
+        this.watchProgress.enabled = shouldSavePosition
         if (this.autoRotationMode != "manual") // don't reset
             this.autoRotationMode = getString("auto_rotation", R.string.pref_auto_rotation_default)
         this.controlsAtBottom = prefs.getBoolean("bottom_controls", true)
@@ -972,7 +986,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             return showUnlockControls()
 
         val notYetPlayed = psc.playlistCount - psc.playlistPos - 1
-        if (notYetPlayed <= 0 || !playlistExitWarning) {
+        if (notYetPlayed <= 0 || !playlistExitWarning || tvQueue) {
             finishWithResult(RESULT_OK, true)
             return
         }
@@ -2013,6 +2027,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String, value: Long) {
+        if (property == "time-pos")
+            watchProgress.onPosition(value)
         if (psc.update(property, value))
             updateMediaSession()
 
@@ -2021,6 +2037,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String, value: Double) {
+        if (property == "duration/full")
+            watchProgress.onDuration(value)
         if (property == "container-fps")
             player.setFrameRateHint(value)
         if (psc.update(property, value))
@@ -2031,6 +2049,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
     }
 
     override fun eventProperty(property: String, value: String) {
+        if (property == "path")
+            watchProgress.onPath(value)
         val metaUpdated = psc.update(property, value)
         if (metaUpdated)
             updateMediaSession()
@@ -2173,6 +2193,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
     companion object {
         private const val TAG = "mpv"
+        /** Boolean extra set by the TV library when it queues the files after the one picked. */
+        const val EXTRA_TV_QUEUE = "tv_queue"
         // how long should controls be displayed on screen (ms)
         private const val CONTROLS_DISPLAY_TIMEOUT = 1500L
         // how long controls fade to disappear (ms)
