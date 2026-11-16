@@ -5,8 +5,9 @@ An Android video and audio player. It is a fork of [mpv-android](https://github.
 ## What's different
 
 - **Android TV home screen.** A grid of thumbnails for every video and audio file on the device (internal storage, SD cards, USB drives). No buttons.
+- **Match display frame rate.** Asks the display to switch to the video's frame rate, so 24 fps films play without judder. On by default on TVs. See [Frame rate matching](#frame-rate-matching).
 - **Aengus theme.** One palette, shape and focus style across the app, in light and dark. TVs always use the dark palette.
-- **Everything else is mpv-android.** Phones and tablets keep the original button home screen. The player, gestures and settings screens are upstream's.
+- **Everything else is mpv-android.** Phones and tablets keep the original button home screen. Playback, gestures and the rest of settings follow upstream.
 
 ## Using it on a TV
 
@@ -25,7 +26,18 @@ The menu has:
 - **Browse folders**
 - **Settings**
 
-Sort, show and group choices are remembered. Ringtones, notification sounds and alarms are left out of the grid. Frame rate matching is on by default on TVs only.
+Sort, show and group choices are remembered. Ringtones, notification sounds and alarms are left out of the grid.
+
+## Frame rate matching
+
+**Settings > Video > Match display frame rate** asks the display to switch to the frame rate of the video being played (for example 23.976 Hz for a film), instead of leaving it at the screen's default.
+
+- **Default:** on for TVs, off for phones and tablets.
+- **Needs Android 11 or newer.** On older versions the switch does nothing.
+- **Android 12 and newer** allow the switch even when it is not seamless, which can briefly blank the screen on some displays.
+- **The system can override it.** If Android's own "Match content frame rate" setting says otherwise, the system wins.
+- **Sync stays correct.** When the display changes mode, the player picks up the new refresh rate, so mpv's video sync follows it.
+- **Resets between files.** The request is cleared when there is no video or the frame rate is unknown.
 
 ## Using it on a phone or tablet
 
