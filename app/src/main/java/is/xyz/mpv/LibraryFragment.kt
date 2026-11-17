@@ -889,7 +889,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
             rows.forEachIndexed { i, row ->
                 val changed = when (row) {
                     is Row.Item -> row.entry.path.isNotEmpty() && old[row.entry.path] != new[row.entry.path]
-                    is Row.Group -> row.members.any { it.path.isNotEmpty() && old[it.path] != new[it.path] }
+                    is Row.Group -> false
                     is Row.Header -> false
                 }
                 if (changed)
@@ -933,10 +933,6 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                     bindProgress(holder.b, row.entry)
                     return
                 }
-                if (row is Row.Group) {
-                    bindGroupProgress(holder.b, row)
-                    return
-                }
             }
             super.onBindViewHolder(holder, position, payloads)
         }
@@ -967,7 +963,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                     openGroup(row, at)
             }
             b.root.setOnLongClickListener { showMenu(); true }
-            bindGroupProgress(b, row)
+            b.progress.isVisible = false
 
             val key = Uri.parse("group://" + Uri.encode(row.key))
             b.thumb.tag = key
@@ -987,19 +983,6 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         private fun bindingAdapterPositionOf(b: ItemTvMediaBinding): Int =
             (binding.grid.findContainingViewHolder(b.root))?.bindingAdapterPosition
                 ?: RecyclerView.NO_POSITION
-
-        /** The bar of a card is that of the first file in it that was left half-watched. */
-        private fun bindGroupProgress(b: ItemTvMediaBinding, row: Row.Group) {
-            val saved = row.members.firstNotNullOfOrNull { savedProgress[it.path] }
-            if (saved == null) {
-                b.progress.isVisible = false
-                return
-            }
-            b.progress.progress = saved.percent
-            b.progress.contentDescription =
-                b.root.context.getString(R.string.tv_progress_description, saved.percent)
-            b.progress.isVisible = true
-        }
 
         /** Posters are tall; fitting them whole beats cropping the middle out of one. */
         private fun showCover(view: ImageView, bmp: Bitmap) {
