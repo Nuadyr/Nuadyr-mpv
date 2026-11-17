@@ -400,7 +400,9 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
 
         tvQueue = intent?.getBooleanExtra(EXTRA_TV_QUEUE, false) ?: false
 
-        if (!activityIsForeground && didResumeBackgroundPlayback) {
+        // A pick from the TV library always replaces the old queue and plays in front.
+        val fromTvLibrary = intent?.getBooleanExtra(EXTRA_TV_LIBRARY, false) ?: false
+        if (!fromTvLibrary && !activityIsForeground && didResumeBackgroundPlayback) {
             if (this.newIntentReplace) {
                 MPVLib.command(arrayOf("loadfile", filepath, "replace"))
                 showToast(getString(R.string.notice_file_play))
@@ -981,13 +983,23 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         return unhandled < 2
     }
 
+    /**
+     * Leaving the player drops whatever was queued, so the next file picked in the library
+     * starts a fresh queue instead of joining or resuming the old one.
+     */
+    private fun exitAndClearQueue() {
+        if (!isFinishing)
+            MPVLib.command(arrayOf("playlist-clear"))
+        finishWithResult(RESULT_OK, true)
+    }
+
     private fun onBackPressedImpl() {
         if (lockedUI)
             return showUnlockControls()
 
         val notYetPlayed = psc.playlistCount - psc.playlistPos - 1
         if (notYetPlayed <= 0 || !playlistExitWarning || tvQueue) {
-            finishWithResult(RESULT_OK, true)
+            exitAndClearQueue()
             return
         }
 
@@ -996,7 +1008,7 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
             setMessage(getString(R.string.exit_warning_playlist, notYetPlayed))
             setPositiveButton(R.string.dialog_yes) { dialog, _ ->
                 dialog.dismiss()
-                finishWithResult(RESULT_OK, true)
+                exitAndClearQueue()
             }
             setNegativeButton(R.string.dialog_no) { dialog, _ ->
                 dialog.dismiss()
@@ -2195,6 +2207,8 @@ class MPVActivity : AppCompatActivity(), MPVLib.EventObserver, TouchGesturesObse
         private const val TAG = "mpv"
         /** Boolean extra set by the TV library when it queues the files after the one picked. */
         const val EXTRA_TV_QUEUE = "tv_queue"
+        /** Boolean extra set on every play started from the TV library; it replaces any old queue. */
+        const val EXTRA_TV_LIBRARY = "tv_library"
         // how long should controls be displayed on screen (ms)
         private const val CONTROLS_DISPLAY_TIMEOUT = 1500L
         // how long controls fade to disappear (ms)
