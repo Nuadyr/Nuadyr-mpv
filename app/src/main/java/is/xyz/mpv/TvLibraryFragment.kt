@@ -490,10 +490,12 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val i: Intent
         if (filepath.startsWith("content://")) {
             i = Intent(Intent.ACTION_VIEW, Uri.parse(filepath))
+            i.putExtra(MPVActivity.EXTRA_TV_LIBRARY, true)
         } else {
             i = Intent()
             // if we pass 'filepath' it will go directly to mpv without any processing
             i.putExtra("filepath", filepath)
+            i.putExtra(MPVActivity.EXTRA_TV_LIBRARY, true)
             if (tvQueue)
                 i.putExtra(MPVActivity.EXTRA_TV_QUEUE, true)
         }
