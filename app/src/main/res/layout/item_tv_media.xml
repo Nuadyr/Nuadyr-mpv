@@ -28,6 +28,23 @@
                 android:importantForAccessibility="no"
                 android:scaleType="centerCrop" />
 
+            <!-- How many files a group card holds. Hidden on a single file. -->
+            <TextView
+                android:id="@+id/badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="top|end"
+                android:layout_margin="6dp"
+                android:background="@drawable/aengus_badge_bg"
+                android:importantForAccessibility="no"
+                android:paddingStart="10dp"
+                android:paddingTop="2dp"
+                android:paddingEnd="10dp"
+                android:paddingBottom="2dp"
+                android:textColor="@color/aengus_paper"
+                android:textSize="16sp"
+                android:visibility="gone" />
+
             <!-- Where playback stopped. Shown only for files that were started and not finished. -->
             <ProgressBar
                 android:id="@+id/progress"
