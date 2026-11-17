@@ -13,6 +13,7 @@ import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.content.res.ColorStateList
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.media.MediaScannerConnection
 import android.net.Uri
 import android.os.Build
@@ -30,6 +31,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
@@ -83,6 +85,15 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private var sortOrder = SortOrder.NEWEST
     private var kindFilter = KindFilter.ALL
     private var grouping = Grouping.NONE
+    /** A custom folder of files shows as one card; files in system folders stay as single tiles. */
+    private var folderCards = true
+    /** Key of the card whose files are listed, or null on the main grid. */
+    private var openGroupKey: String? = null
+    private var openGroupName = ""
+    /** Item id of the card to focus when the grid comes back from a group. */
+    private var pendingFocusId: Long? = null
+    private var returnFocusId: Long? = null
+    private lateinit var closeGroupCallback: OnBackPressedCallback
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -93,6 +104,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         sortOrder = enumPref(saved, PREF_SORT, SortOrder.NEWEST)
         kindFilter = enumPref(saved, PREF_FILTER, KindFilter.ALL)
         grouping = enumPref(saved, PREF_GROUP, Grouping.NONE)
+        folderCards = saved.getBoolean(PREF_FOLDER_CARDS, true)
 
         permissionLauncher = registerForActivityResult(
             ActivityResultContracts.RequestMultiplePermissions()
@@ -123,7 +135,6 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         Utils.handleInsetsAsPadding(binding.root)
 
         ViewCompat.setAccessibilityHeading(binding.heading, true)
-        binding.heading.setText(kindFilter.title)
 
         val metrics = resources.displayMetrics
         val widthDp = metrics.widthPixels / metrics.density
@@ -137,6 +148,13 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         binding.grid.layoutManager = layout
         binding.grid.adapter = adapter
         binding.grid.setHasFixedSize(true)
+
+        // Back leaves a group and returns to the grid before it leaves the app.
+        closeGroupCallback = object : OnBackPressedCallback(openGroupKey != null) {
+            override fun handleOnBackPressed() = closeGroup()
+        }
+        requireActivity().onBackPressedDispatcher.addCallback(viewLifecycleOwner, closeGroupCallback)
+        updateHeading()
 
         // With nothing in the grid there is nothing else to focus, so this is the way to the menu.
         binding.emptyText.setOnClickListener { showMenu() }
@@ -254,6 +272,7 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     /** Applies the sort, filter and grouping choices to [allEntries] and shows the result. */
     private fun showEntries(forceFocus: Boolean) {
         val rows = buildRows(allEntries)
+        updateHeading()
         val changed = adapter.submit(rows)
         when {
             allEntries.isEmpty() -> showEmpty(R.string.tv_library_empty)
@@ -266,17 +285,63 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         val hadFocus = binding.emptyText.hasFocus()
         binding.emptyText.isVisible = false
         binding.grid.isVisible = true
+        val returnTo = pendingFocusId
+        pendingFocusId = null
         // The tile that had focus may be gone or elsewhere now, so start again at the top.
         if (forceFocus)
             binding.grid.scrollToPosition(0)
         // A TV has no pointer, so the remote needs a first tile in focus.
-        if (forceFocus || hadFocus || binding.root.findFocus() == null) {
+        if (returnTo != null || forceFocus || hadFocus || binding.root.findFocus() == null) {
             binding.grid.doOnNextLayout {
-                val first = adapter.firstItemPosition()
-                if (first != RecyclerView.NO_POSITION)
-                    binding.grid.findViewHolderForAdapterPosition(first)?.itemView?.requestFocus()
+                val back = returnTo?.let { adapter.positionOfId(it) } ?: RecyclerView.NO_POSITION
+                val target = if (back != RecyclerView.NO_POSITION) back
+                             else adapter.initialFocusPosition(openGroupKey != null)
+                focusPosition(target)
             }
         }
+    }
+
+    private fun focusPosition(position: Int) {
+        if (position == RecyclerView.NO_POSITION)
+            return
+        val holder = binding.grid.findViewHolderForAdapterPosition(position)
+        if (holder != null) {
+            holder.itemView.requestFocus()
+            return
+        }
+        // not laid out yet: scroll there and try again once it is
+        binding.grid.scrollToPosition(position)
+        binding.grid.doOnNextLayout {
+            binding.grid.findViewHolderForAdapterPosition(position)?.itemView?.requestFocus()
+        }
+    }
+
+    private fun updateHeading() {
+        if (!::binding.isInitialized)
+            return
+        val group = openGroupKey
+        if (group != null)
+            binding.heading.text = openGroupName
+        else
+            binding.heading.setText(kindFilter.title)
+        if (::closeGroupCallback.isInitialized)
+            closeGroupCallback.isEnabled = group != null
+    }
+
+    private fun openGroup(row: Row.Group, position: Int) {
+        openGroupKey = row.key
+        openGroupName = row.name
+        // the card to come back to when the group is closed
+        returnFocusId = adapter.idAt(position)
+        showEntries(forceFocus = true)
+    }
+
+    private fun closeGroup() {
+        openGroupKey = null
+        openGroupName = ""
+        pendingFocusId = returnFocusId
+        returnFocusId = null
+        showEntries(forceFocus = false)
     }
 
     private fun showEmpty(messageRes: Int) {
@@ -298,6 +363,12 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             menuValue(R.string.tv_menu_sort, sortOrder.label) to { chooseSort() },
             menuValue(R.string.tv_menu_filter, kindFilter.label) to { chooseFilter() },
             menuValue(R.string.tv_menu_group, grouping.label) to { chooseGrouping() },
+            menuValue(R.string.tv_menu_series,
+                if (folderCards) R.string.tv_series_on else R.string.tv_series_off) to {
+                folderCards = !folderCards
+                openGroupKey = null
+                applyViewOptions()
+            },
             getString(R.string.action_open_url) to { openUrl() },
             getString(R.string.tv_menu_folders) to { openFolders() },
             getString(R.string.action_settings) to
@@ -347,6 +418,8 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
     private sealed interface Row {
         data class Header(val label: String) : Row
         data class Item(val entry: MediaEntry) : Row
+        /** One card for several related files. [key] is stable across refreshes. */
+        data class Group(val key: String, val name: String, val members: List<MediaEntry>) : Row
     }
 
     private fun chooseSort() =
@@ -390,8 +463,9 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             .putString(PREF_SORT, sortOrder.name)
             .putString(PREF_FILTER, kindFilter.name)
             .putString(PREF_GROUP, grouping.name)
+            .putBoolean(PREF_FOLDER_CARDS, folderCards)
             .apply()
-        binding.heading.setText(kindFilter.title)
+        updateHeading()
         showEntries(forceFocus = true)
     }
 
@@ -405,11 +479,26 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         ?: default
 
     private fun buildRows(all: List<MediaEntry>): List<Row> {
+        val rows = buildSectionRows(all)
+        val open = openGroupKey ?: return rows
+        val group = rows.firstOrNull { it is Row.Group && it.key == open } as? Row.Group
+        if (group == null) {
+            // the files of this group are gone (or filtered out), so go back to the grid
+            openGroupKey = null
+            openGroupName = ""
+            return rows
+        }
+        openGroupName = group.name
+        // episodes read in order whatever the grid is sorted by
+        return group.members.sortedWith(byName.then(byId)).map { Row.Item(it) }
+    }
+
+    private fun buildSectionRows(all: List<MediaEntry>): List<Row> {
         val shown = all
             .filter { kindFilter.accepts(it) }
             .sortedWith(comparatorFor(sortOrder))
         val groups: List<Pair<String, List<MediaEntry>>> = when (grouping) {
-            Grouping.NONE -> return shown.map { Row.Item(it) }
+            Grouping.NONE -> return collapse("", shown)
             Grouping.TYPE -> {
                 val (audio, video) = shown.partition { it.isAudio }
                 listOf(
@@ -424,7 +513,48 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         }
         return groups
             .filter { it.second.isNotEmpty() }
-            .flatMap { (label, entries) -> listOf<Row>(Row.Header(label)) + entries.map { Row.Item(it) } }
+            .flatMap { (label, entries) -> listOf<Row>(Row.Header(label)) + collapse(label, entries) }
+    }
+
+    /**
+     * Turns the files of one section into tiles. The files of a custom folder (two or more of
+     * them) become one [Row.Group] that sits where the folder's first file was. Files in system
+     * folders such as Downloads, or in the root of a drive, stay as single tiles.
+     */
+    private fun collapse(section: String, entries: List<MediaEntry>): List<Row> {
+        // with Group by Folder every section already is a folder
+        if (!folderCards || grouping == Grouping.FOLDER)
+            return entries.map { Row.Item(it) }
+        val byFolder = LinkedHashMap<String, MutableList<MediaEntry>>()
+        for (e in entries) {
+            val card = cardFolder(e.folder) ?: continue
+            byFolder.getOrPut(card) { ArrayList() }.add(e)
+        }
+        val shown = HashSet<String>()
+        return entries.mapNotNull { e ->
+            val card = cardFolder(e.folder)
+            val members = if (card == null) null else byFolder[card]
+            val row: Row? = when {
+                card == null || members == null || members.size < 2 -> Row.Item(e)
+                shown.add(card) -> Row.Group("$section|$card", card.substringAfterLast('/'), members)
+                else -> null // already inside its card
+            }
+            row
+        }
+    }
+
+    /**
+     * The folder whose card a file belongs to, or null if the file stays a single tile. A season
+     * folder ("Season 2") belongs to the folder above it, so a show is one card, not one per season.
+     */
+    private fun cardFolder(folder: String): String? {
+        val rest = VOLUME_ROOT.replaceFirst(folder, "")
+        var parts = rest.split('/').filter { it.isNotEmpty() }
+        while (parts.isNotEmpty() && SEASON_FOLDER.matches(parts.last()))
+            parts = parts.dropLast(1)
+        if (parts.isEmpty() || parts.last().lowercase() in SYSTEM_FOLDERS)
+            return null
+        return folder.substring(0, folder.length - rest.length) + "/" + parts.joinToString("/")
     }
 
     private fun comparatorFor(order: SortOrder): Comparator<MediaEntry> {
@@ -662,8 +792,28 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
 
         fun isHeader(position: Int) = rows.getOrNull(position) is Row.Header
 
+        fun idAt(position: Int): Long = getItemId(position)
+
+        fun positionOfId(id: Long): Int = rows.indices.firstOrNull { getItemId(it) == id }
+            ?: RecyclerView.NO_POSITION
+
         /** Position of the first tile (section titles cannot take focus), or NO_POSITION. */
-        fun firstItemPosition() = rows.indexOfFirst { it is Row.Item }
+        fun firstItemPosition() = rows.indexOfFirst { it !is Row.Header }
+
+        /**
+         * Where focus starts. Inside a group that is the file left half-watched, so OK carries on
+         * where the person stopped; otherwise the first tile.
+         */
+        fun initialFocusPosition(insideGroup: Boolean): Int {
+            if (insideGroup) {
+                val resume = rows.indexOfFirst {
+                    it is Row.Item && savedProgress.containsKey(it.entry.path)
+                }
+                if (resume >= 0)
+                    return resume
+            }
+            return firstItemPosition()
+        }
 
         /**
          * Paths of [entry] and the files after it, in the order shown. The queue stops at the next
@@ -677,16 +827,23 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             if (start < 0)
                 return emptyList()
             val out = ArrayList<String>()
-            for (i in start until rows.size) {
-                val e = (rows[i] as? Row.Item)?.entry ?: break
-                if (e.isAudio != entry.isAudio || !isQueueable(e.path)) {
-                    if (i == start)
-                        return emptyList()
-                    continue
+            loop@ for (i in start until rows.size) {
+                // a group card queues all its files, so the player plays through a whole show
+                val entries = when (val row = rows[i]) {
+                    is Row.Item -> listOf(row.entry)
+                    is Row.Group -> row.members
+                    is Row.Header -> break@loop
                 }
-                out.add(e.path)
-                if (out.size >= MAX_QUEUE)
-                    break
+                for (e in entries) {
+                    if (e.isAudio != entry.isAudio || !isQueueable(e.path)) {
+                        if (i == start)
+                            return emptyList()
+                        continue
+                    }
+                    out.add(e.path)
+                    if (out.size >= MAX_QUEUE)
+                        break@loop
+                }
             }
             return out
         }
@@ -694,8 +851,12 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         /** Rebinds just the bar of tiles whose saved position changed, so focus stays put. */
         fun progressChanged(old: Map<String, WatchProgress.Entry>, new: Map<String, WatchProgress.Entry>) {
             rows.forEachIndexed { i, row ->
-                if (row is Row.Item && row.entry.path.isNotEmpty() &&
-                    old[row.entry.path] != new[row.entry.path])
+                val changed = when (row) {
+                    is Row.Item -> row.entry.path.isNotEmpty() && old[row.entry.path] != new[row.entry.path]
+                    is Row.Group -> row.members.any { it.path.isNotEmpty() && old[it.path] != new[it.path] }
+                    is Row.Header -> false
+                }
+                if (changed)
                     notifyItemChanged(i, PAYLOAD_PROGRESS)
             }
         }
@@ -723,15 +884,23 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             // negative, so a title can never share an id with a tile
             is Row.Header -> HEADER_ID_BASE - position
             is Row.Item -> row.entry.id * 2 + if (row.entry.isAudio) 1 else 0
+            // far below the title ids, and the same card keeps the same id between refreshes
+            is Row.Group -> GROUP_ID_BASE + (row.key.hashCode().toLong() and 0xFFFFFFFFL)
         }
 
         override fun onBindViewHolder(
             holder: RecyclerView.ViewHolder, position: Int, payloads: MutableList<Any>,
         ) {
             val row = rows[position]
-            if (payloads.contains(PAYLOAD_PROGRESS) && row is Row.Item && holder is ItemHolder) {
-                bindProgress(holder.b, row.entry)
-                return
+            if (payloads.contains(PAYLOAD_PROGRESS) && holder is ItemHolder) {
+                if (row is Row.Item) {
+                    bindProgress(holder.b, row.entry)
+                    return
+                }
+                if (row is Row.Group) {
+                    bindGroupProgress(holder.b, row)
+                    return
+                }
             }
             super.onBindViewHolder(holder, position, payloads)
         }
@@ -740,13 +909,75 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             when (val row = rows[position]) {
                 is Row.Header -> (holder as HeaderHolder).text.text = row.label
                 is Row.Item -> bindItem((holder as ItemHolder).b, row.entry)
+                is Row.Group -> bindGroup((holder as ItemHolder).b, row, position)
             }
+        }
+
+        private fun bindGroup(b: ItemTvMediaBinding, row: Row.Group, position: Int) {
+            val ctx = b.root.context
+            val count = row.members.size
+            val cover = row.members[0]
+
+            b.title.text = row.name
+            b.meta.text = ctx.getString(R.string.tv_group_meta, count)
+            b.badge.text = count.toString()
+            b.badge.isVisible = true
+            b.root.contentDescription = ctx.getString(R.string.tv_group_description, row.name, count)
+
+            // OK opens the group; the position is read when clicked, as rows can shift
+            b.root.setOnClickListener {
+                val at = bindingAdapterPositionOf(b)
+                if (at != RecyclerView.NO_POSITION)
+                    openGroup(row, at)
+            }
+            b.root.setOnLongClickListener { showMenu(); true }
+            bindGroupProgress(b, row)
+
+            val key = Uri.parse("group://" + Uri.encode(row.key))
+            b.thumb.tag = key
+            val cached = thumbs.cached(key)
+            if (cached != null) {
+                showCover(b.thumb, cached)
+            } else {
+                showPlaceholder(b.thumb, cover.isAudio)
+                val folders = row.members.map { it.folder }.distinct().take(COVER_FOLDERS)
+                thumbs.fetchCover(key, folders, cover.id, cover.uri, cover.isAudio) { bmp ->
+                    if (b.thumb.tag == key)
+                        showCover(b.thumb, bmp)
+                }
+            }
+        }
+
+        private fun bindingAdapterPositionOf(b: ItemTvMediaBinding): Int =
+            (binding.grid.findContainingViewHolder(b.root))?.bindingAdapterPosition
+                ?: RecyclerView.NO_POSITION
+
+        /** The bar of a card is that of the first file in it that was left half-watched. */
+        private fun bindGroupProgress(b: ItemTvMediaBinding, row: Row.Group) {
+            val saved = row.members.firstNotNullOfOrNull { savedProgress[it.path] }
+            if (saved == null) {
+                b.progress.isVisible = false
+                return
+            }
+            b.progress.progress = saved.percent
+            b.progress.contentDescription =
+                b.root.context.getString(R.string.tv_progress_description, saved.percent)
+            b.progress.isVisible = true
+        }
+
+        /** Posters are tall; fitting them whole beats cropping the middle out of one. */
+        private fun showCover(view: ImageView, bmp: Bitmap) {
+            showBitmap(view, bmp)
+            if (bmp.height > bmp.width)
+                view.scaleType = ImageView.ScaleType.FIT_CENTER
         }
 
         private fun bindItem(b: ItemTvMediaBinding, entry: MediaEntry) {
             val ctx = b.root.context
 
             b.title.text = entry.title
+            b.badge.isVisible = false
+            b.root.contentDescription = null
             val kind = ctx.getString(if (entry.isAudio) R.string.tv_kind_audio else R.string.tv_kind_video)
             b.meta.text = if (entry.durationMs > 0)
                 ctx.getString(R.string.tv_meta_format, kind, formatDuration(entry.durationMs))
@@ -831,6 +1062,71 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
             }
         }
 
+        /**
+         * Cover of a group: a poster image in one of the files' folders (or the folder above a
+         * season folder) if there is one, otherwise the thumbnail of the first file.
+         */
+        fun fetchCover(
+            key: Uri, folders: List<String>, id: Long, uri: Uri, audio: Boolean, onLoaded: (Bitmap) -> Unit,
+        ) {
+            if (failed.contains(key))
+                return
+            try {
+                pool.execute {
+                    val bmp = findPoster(folders) ?: load(id, uri, audio)
+                    if (bmp == null) {
+                        failed.add(key)
+                        return@execute
+                    }
+                    cache.put(key, bmp)
+                    handler.post { onLoaded(bmp) }
+                }
+            } catch (e: java.util.concurrent.RejectedExecutionException) {
+                // fragment is going away
+            }
+        }
+
+        private fun findPoster(folders: List<String>): Bitmap? {
+            val dirs = LinkedHashSet<File>()
+            for (f in folders) {
+                if (f.isEmpty())
+                    continue
+                val dir = File(f)
+                dirs.add(dir)
+                // Season 1 -> the show's folder
+                dir.parentFile?.let { parent ->
+                    if (dir.name.matches(SEASON_FOLDER))
+                        dirs.add(parent)
+                }
+            }
+            for (dir in dirs) {
+                val names = try { dir.list() } catch (e: Exception) { null } ?: continue
+                val poster = POSTER_BASENAMES.firstNotNullOfOrNull { base ->
+                    names.firstOrNull { n ->
+                        val lower = n.lowercase()
+                        POSTER_EXTENSIONS.any { ext -> lower == "$base.$ext" }
+                    }
+                } ?: continue
+                decodePoster(File(dir, poster))?.let { return it }
+            }
+            return null
+        }
+
+        private fun decodePoster(file: File): Bitmap? {
+            return try {
+                val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+                BitmapFactory.decodeFile(file.path, bounds)
+                if (bounds.outWidth <= 0 || bounds.outHeight <= 0)
+                    return null
+                var sample = 1
+                while (bounds.outHeight / (sample * 2) >= POSTER_MAX_HEIGHT)
+                    sample *= 2
+                BitmapFactory.decodeFile(file.path, BitmapFactory.Options().apply { inSampleSize = sample })
+            } catch (e: Exception) {
+                null
+            }
+        }
+
         @Suppress("DEPRECATION")
         private fun load(id: Long, uri: Uri, audio: Boolean): Bitmap? {
             return try {
@@ -872,6 +1168,21 @@ class TvLibraryFragment : Fragment(R.layout.fragment_tv_library) {
         private const val PREF_SORT = "sort"
         private const val PREF_FILTER = "filter"
         private const val PREF_GROUP = "group"
+        private const val PREF_FOLDER_CARDS = "folder_cards"
+
+        private const val GROUP_ID_BASE = Long.MIN_VALUE / 2
+        private const val COVER_FOLDERS = 4
+        /** Start of a path that is the drive itself, which is never a card. */
+        private val VOLUME_ROOT = Regex("^/(?:storage/emulated/\\d+|storage/[^/]+|mnt/media_rw/[^/]+)")
+        private val SEASON_FOLDER = Regex("(?i)(?:season|series|s)\\s*\\d+|specials?|extras?")
+        /** Folders every phone has: what is inside them is not a collection. */
+        private val SYSTEM_FOLDERS = setOf(
+            "download", "downloads", "movies", "movie", "video", "videos", "music", "audio", "dcim", "camera",
+            "documents", "recordings", "screenrecords", "screenshots", "pictures", "podcasts", "audiobooks",
+            "ringtones", "notifications", "alarms", "android", "data", "obb", "media", "bluetooth")
+        private const val POSTER_MAX_HEIGHT = 540
+        private val POSTER_BASENAMES = listOf("poster", "folder", "cover", "front", "thumb")
+        private val POSTER_EXTENSIONS = listOf("jpg", "jpeg", "png", "webp")
 
         // file paths from MediaStore.DATA, shortened on section titles
         private const val RESCAN_MAX_DEPTH = 12
