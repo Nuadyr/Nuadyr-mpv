@@ -578,7 +578,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
     private fun cardFolder(folder: String): String? {
         val rest = VOLUME_ROOT.replaceFirst(folder, "")
         var parts = rest.split('/').filter { it.isNotEmpty() }
-        while (parts.isNotEmpty() && SEASON_FOLDER.matches(parts.last()))
+        while (parts.isNotEmpty() && isSeasonFolder(parts.last(), parts.getOrNull(parts.size - 2)))
             parts = parts.dropLast(1)
         if (parts.isEmpty() || parts.last().lowercase() in SYSTEM_FOLDERS)
             return null
@@ -1131,7 +1131,7 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
                 dirs.add(dir)
                 // Season 1 -> the show's folder
                 dir.parentFile?.let { parent ->
-                    if (dir.name.matches(SEASON_FOLDER))
+                    if (isSeasonFolder(dir.name, parent.name))
                         dirs.add(parent)
                 }
             }
@@ -1211,6 +1211,25 @@ class LibraryFragment : Fragment(R.layout.fragment_library) {
         /** Start of a path that is the drive itself, which is never a card. */
         private val VOLUME_ROOT = Regex("^/(?:storage/emulated/\\d+|storage/[^/]+|mnt/media_rw/[^/]+)")
         private val SEASON_FOLDER = Regex("(?i)(?:season|series|s)\\s*\\d+|specials?|extras?")
+        /** "Bluey - Season 3": a season folder that repeats the show's name (group 1). */
+        private val NAMED_SEASON_FOLDER = Regex("(?i)^(.+?)[\\s._-]+(?:season|series|s)\\s*\\d+$")
+
+        /**
+         * True for a folder that is only one season of the show in [parentName]: "Season 2", "S02",
+         * "Extras", or "Bluey - Season 2" inside "Bluey". A named season folder only counts when its
+         * name belongs to the parent, so "Kids/Peppa - Season 1" does not merge into "Kids" and
+         * "Downloads/Puffin Rock - Season 1" stays a card of its own.
+         */
+        private fun isSeasonFolder(name: String, parentName: String?): Boolean {
+            if (SEASON_FOLDER.matches(name))
+                return true
+            if (parentName == null)
+                return false
+            val show = NAMED_SEASON_FOLDER.matchEntire(name)?.groupValues?.get(1) ?: return false
+            val a = show.lowercase().filter { it.isLetterOrDigit() }
+            val b = parentName.lowercase().filter { it.isLetterOrDigit() }
+            return a.isNotEmpty() && b.isNotEmpty() && (a.startsWith(b) || b.startsWith(a))
+        }
         /** Folders every phone has: what is inside them is not a collection. */
         private val SYSTEM_FOLDERS = setOf(
             "download", "downloads", "movies", "movie", "video", "videos", "music", "audio", "dcim", "camera",
