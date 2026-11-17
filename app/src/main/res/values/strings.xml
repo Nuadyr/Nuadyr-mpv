@@ -250,6 +250,10 @@
     <string name="tv_group_unknown_folder">Unknown folder</string>
     <string name="tv_group_storage_root">Storage root</string>
     <string name="tv_meta_format">%1$s, %2$s</string>
+    <string name="lib_menu_options">Options</string>
+    <string name="lib_empty">No videos or audio found on this device. Tap here for more options.</string>
+    <string name="lib_no_access">Storage access is off, so no files can be listed. Tap here, then choose Allow storage access.</string>
+    <string name="lib_no_match">Nothing matches the current filter. Tap here to change it.</string>
     <string name="tv_menu_series">Folder cards</string>
     <string name="tv_series_on">On</string>
     <string name="tv_series_off">Off</string>
