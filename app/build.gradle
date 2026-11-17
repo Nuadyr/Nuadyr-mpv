@@ -1,13 +1,17 @@
+import com.android.build.api.variant.FilterConfiguration
+
 apply plugin: 'com.android.application'
 
 ext.abiCodes = ["armeabi-v7a": 1, "arm64-v8a": 2, "x86":3, "x86_64":4]
 ext.universalBase = 8000
+ext.abiCodeStride = 1000
 
 android {
     namespace 'is.xyz.mpv'
     compileSdk = 36
 
     defaultConfig {
+        applicationId 'io.github.nuadyr.mpv'
         minSdkVersion 23
         targetSdk 36
 
@@ -67,7 +71,6 @@ android {
 
 // Map versionCode so each ABI gets a different one
 // e.g. x86 with version 21 gets a versionCode of 3021
-import com.android.build.api.variant.FilterConfiguration
 androidComponents {
     onVariants(selector().all()) { variant ->
         variant.outputs.forEach { output ->
@@ -75,7 +78,7 @@ androidComponents {
             def base = project.ext.abiCodes[abiName]
             // universal APK just gets a constant added to it
             if (base != null)
-                output.versionCode.set(output.versionCode.get() + base * 1000)
+                output.versionCode.set(output.versionCode.get() + base * project.ext.abiCodeStride)
             else
                 output.versionCode.set(output.versionCode.get() + project.ext.universalBase)
         }
