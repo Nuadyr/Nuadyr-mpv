@@ -26,9 +26,9 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
         if (savedInstanceState == null) {
             with (supportFragmentManager.beginTransaction()) {
                 setReorderingAllowed(true)
-                // a TV gets the thumbnail grid, everything else keeps the button home screen
+                // a TV gets the thumbnail grid built for a remote, everything else the one built for touch
                 add(R.id.fragment_container_view,
-                    if (isTelevision()) TvLibraryFragment() else MainScreenFragment())
+                    if (isTelevision()) TvLibraryFragment() else LibraryFragment())
                 commit()
             }
         }
@@ -37,10 +37,13 @@ class MainActivity : AppCompatActivity(R.layout.activity_main) {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         // the Menu key opens the extra options of the TV library
         if (keyCode == KeyEvent.KEYCODE_MENU) {
-            val tv = supportFragmentManager.findFragmentById(R.id.fragment_container_view)
-                as? TvLibraryFragment
-            if (tv != null) {
-                tv.showMenu()
+            val current = supportFragmentManager.findFragmentById(R.id.fragment_container_view)
+            if (current is TvLibraryFragment) {
+                current.showMenu()
+                return true
+            }
+            if (current is LibraryFragment) {
+                current.showMenu()
                 return true
             }
         }
