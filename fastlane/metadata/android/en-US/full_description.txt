@@ -1,10 +1,19 @@
-mpv-android is a video player for Android based on <a href="https://github.com/mpv-player/mpv">libmpv</a>.
+Nuadyr-mpv is a video and audio player for Android TV, phones and tablets. It is a fork of mpv-android (https://github.com/mpv-android/mpv-android) and plays with libmpv (https://github.com/mpv-player/mpv).
 
-Features:
+What's different:
+* Library home screen: a thumbnail grid of all your videos and audio on TV, phone and tablet
+* Sort, filter and group the library; folder cards for folders with several files
+* Resume where you stopped, with progress bars on the tiles
+* Auto queue: the files after the one you pick play next
+* Frame rate matching on Android TV (Android 11 or newer)
+* Aengus theme, light and dark
+
+From mpv-android:
 * Hardware and software video decoding
 * Gesture-based seeking, volume/brightness control and more
-* libass support for styled subtitles
-* Secondary (or dual) subtitle support
+* libass support for styled subtitles, secondary (or dual) subtitles
 * Advanced video settings (interpolation, debanding, scalers, ...)
 * Play network streams with the "Open URL" function
 * Background playback, Picture-in-Picture, keyboard input supported
+
+Credits: Nuadyr-mpv is a fork of mpv-android, created by the mpv-android contributors and released under the MIT licence. The player engine, decoding, gestures and subtitles are theirs, unchanged. Thank you to them and to the libmpv developers.
