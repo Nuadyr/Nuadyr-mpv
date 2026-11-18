@@ -105,6 +105,12 @@ APKs land in `app/build/outputs/apk/`. More in [`buildscripts/README.md`](builds
 
 **Which Android versions?** 6.0 or newer.
 
+## Store listing
+
+The listing text lives in [`fastlane/metadata/android`](fastlane/metadata/android), one folder per language: `title.txt`, `short_description.txt` and `full_description.txt`. The title, short description and full description are Nuadyr-mpv's own. They credit [mpv-android](https://github.com/mpv-android/mpv-android) and [libmpv](https://github.com/mpv-player/mpv), as this is a fork. The screenshots, icon and TV banner have not been changed.
+
+The short description is 80 characters or fewer and the full description is plain text, because Google Play does not show HTML links. Only `en-US` and `fa-IR` have a `title.txt`. The non-English texts are machine-written and could use a native speaker's review.
+
 ## Licence
 
 MIT, as upstream. See [`LICENSE`](LICENSE).
